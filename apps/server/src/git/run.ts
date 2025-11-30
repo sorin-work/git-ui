@@ -41,6 +41,8 @@ export class GitError extends Error {
 export interface GitOptions {
   timeoutMs?: number;
   maxBuffer?: number;
+  /** Extra environment variables, e.g. commit dates. */
+  env?: Record<string, string>;
 }
 
 function run<T extends string | Buffer>(
@@ -62,6 +64,7 @@ function run<T extends string | Buffer>(
           ...process.env,
           GIT_TERMINAL_PROMPT: '0',
           LC_ALL: 'C',
+          ...options.env,
         },
         windowsHide: true,
       },
