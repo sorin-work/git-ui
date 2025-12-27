@@ -551,3 +551,88 @@ pre {
 .hljs-strong {
   font-weight: 700;
 }
+
+/* README */
+
+.readme {
+  margin-top: 16px;
+}
+
+.readme__header {
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+}
+
+.readme__plain {
+  margin: 0;
+  padding: 16px;
+  white-space: pre-wrap;
+}
+
+.markdown {
+  padding: 8px 28px 24px;
+  font-size: 15px;
+  line-height: 1.65;
+  overflow-wrap: break-word;
+}
+
+.markdown h1,
+.markdown h2 {
+  margin: 24px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.markdown h1 {
+  font-size: 26px;
+}
+
+.markdown h2 {
+  font-size: 21px;
+}
+
+.markdown h3 {
+  margin: 20px 0 8px;
+  font-size: 17px;
+}
+
+.markdown code {
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: var(--surface-muted);
+  font-size: 85%;
+}
+
+.markdown pre {
+  padding: 14px 16px;
+  border-radius: 6px;
+  background: var(--surface-muted);
+  overflow-x: auto;
+}
+
+.markdown pre code {
+  padding: 0;
+  background: none;
+}
+
+.markdown table {
+  border-collapse: collapse;
+}
+
+.markdown th,
+.markdown td {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+}
+
+.markdown blockquote {
+  margin: 0;
+  padding: 0 16px;
+  border-left: 3px solid var(--border);
+  color: var(--text-muted);
+}
+
+.markdown img {
+  max-width: 100%;
+}

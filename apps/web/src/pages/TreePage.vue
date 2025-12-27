@@ -4,8 +4,10 @@ import { useRoute } from 'vue-router';
 import { getTree } from '../api';
 import FileTree from '../components/FileTree.vue';
 import PathBreadcrumbs from '../components/PathBreadcrumbs.vue';
+import ReadmePanel from '../components/ReadmePanel.vue';
 import { useAsync } from '../composables/useAsync';
 import { useRepo } from '../composables/useRepo';
+import { findReadme } from '../lib/markdown';
 import { joinPathParam } from '../lib/paths';
 
 const route = useRoute();
@@ -18,6 +20,8 @@ const tree = useAsync(
   () => getTree(repo.value, explicitRef.value, path.value),
   () => [repo.value, explicitRef.value, path.value],
 );
+
+const readme = computed(() => (tree.data.value ? findReadme(tree.data.value.entries) : null));
 </script>
 
 <template>
@@ -38,6 +42,14 @@ const tree = useAsync(
         :git-ref="currentRef"
         :path="path"
         :entries="tree.data.value.entries"
+      />
+      <ReadmePanel
+        v-if="readme"
+        :key="readme.path"
+        :repo="repo"
+        :git-ref="tree.data.value.commit"
+        :path="readme.path"
+        :name="readme.name"
       />
     </template>
   </div>
