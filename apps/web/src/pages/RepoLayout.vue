@@ -25,6 +25,7 @@ provide(REPO_KEY, { name: computed(() => props.repo), info: repoInfo.data, curre
 
 const tabs = computed(() => [
   { label: 'Code', to: treeUrl(props.repo, currentRef.value), match: ['repo', 'tree', 'blob'] },
+  { label: 'Commits', to: commitsUrl(props.repo, currentRef.value), match: ['commits', 'commit'] },
 ]);
 
 function selectRef(name: string) {

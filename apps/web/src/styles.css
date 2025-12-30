@@ -636,3 +636,94 @@ pre {
 .markdown img {
   max-width: 100%;
 }
+
+.button--small {
+  height: 26px;
+  padding: 0 10px;
+  font-size: 13px;
+}
+
+/* Commit history */
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.filters .input {
+  flex: 1 1 200px;
+}
+
+.path-filter {
+  margin: -6px 0 16px;
+}
+
+.commit-group {
+  margin-bottom: 20px;
+}
+
+.commit-group__day {
+  margin-bottom: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.commit-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.commit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.commit-row:first-child {
+  border-top: 0;
+}
+
+.commit-row__main {
+  min-width: 0;
+}
+
+.commit-row__subject {
+  display: block;
+  overflow: hidden;
+  color: var(--text);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.commit-row__meta {
+  font-size: 13px;
+}
+
+.commit-row__actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
+.sha {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.load-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
+}

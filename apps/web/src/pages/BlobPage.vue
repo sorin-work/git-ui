@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useRoute } from 'vue-router';
+import { RouterLink, useRoute } from 'vue-router';
 import { getBlob } from '../api';
 import CodeView from '../components/CodeView.vue';
 import PathBreadcrumbs from '../components/PathBreadcrumbs.vue';
 import { useAsync } from '../composables/useAsync';
 import { useRepo } from '../composables/useRepo';
-import { formatBytes, joinPathParam } from '../lib/paths';
+import { commitsUrl, formatBytes, joinPathParam } from '../lib/paths';
 
 const route = useRoute();
 const { name: repo, currentRef } = useRepo();
@@ -39,6 +39,9 @@ const lineCount = computed(() => {
           {{ formatBytes(blob.data.value.size) }}
           <template v-if="blob.data.value.language"> · {{ blob.data.value.language }}</template>
         </span>
+        <RouterLink :to="commitsUrl(repo, currentRef, path)" class="button button--small">
+          History
+        </RouterLink>
       </header>
 
       <div v-if="blob.data.value.binary" class="file__notice muted">Binary file, not shown.</div>
