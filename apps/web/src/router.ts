@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import BlobPage from './pages/BlobPage.vue';
+import CommitPage from './pages/CommitPage.vue';
 import CommitsPage from './pages/CommitsPage.vue';
 import HomePage from './pages/HomePage.vue';
 import RepoLayout from './pages/RepoLayout.vue';
@@ -18,6 +19,7 @@ export const router = createRouter({
         { path: 'tree/:ref/:path(.*)*', name: 'tree', component: TreePage },
         { path: 'blob/:ref/:path(.*)*', name: 'blob', component: BlobPage },
         { path: 'commits/:ref', name: 'commits', component: CommitsPage },
+        { path: 'commit/:sha', name: 'commit', component: CommitPage },
       ],
     },
   ],

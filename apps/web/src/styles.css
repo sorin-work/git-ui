@@ -727,3 +727,192 @@ pre {
   justify-content: center;
   margin-top: 8px;
 }
+
+/* Commit page */
+
+.commit-header {
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+
+.commit-header__subject {
+  padding: 16px 18px 0;
+  font-size: 19px;
+}
+
+.commit-header__body {
+  margin: 10px 0 0;
+  padding: 0 18px;
+  font-family: inherit;
+  white-space: pre-wrap;
+}
+
+.commit-header__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 10px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-muted);
+  font-size: 13px;
+}
+
+.commit-header__ids {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.commit-header__ids .sha {
+  margin-left: 4px;
+}
+
+.diff-summary {
+  margin: 0 0 12px;
+}
+
+.added {
+  color: var(--add-text);
+}
+
+.deleted {
+  color: var(--del-text);
+}
+
+/* Diffs */
+
+.diff {
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+
+.diff__header {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+
+.diff__toggle {
+  width: 22px;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.diff__path {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.diff__counts {
+  display: flex;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.status-badge {
+  padding: 0 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-transform: uppercase;
+}
+
+.status-badge--added {
+  background: var(--add-bg);
+  color: var(--add-text);
+}
+
+.status-badge--deleted {
+  background: var(--del-bg);
+  color: var(--del-text);
+}
+
+.status-badge--modified,
+.status-badge--renamed,
+.status-badge--copied {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.diff__body {
+  overflow-x: auto;
+}
+
+.diff__notice {
+  margin: 0;
+  padding: 16px;
+}
+
+.diff__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 20px;
+}
+
+.diff__hunk td {
+  padding: 4px 12px;
+  background: var(--accent-soft);
+  color: var(--text-muted);
+}
+
+.diff__number {
+  width: 1%;
+  min-width: 44px;
+  padding: 0 8px;
+  color: var(--text-muted);
+  text-align: right;
+  user-select: none;
+  opacity: 0.75;
+}
+
+.diff__number::before {
+  content: attr(data-line);
+}
+
+.diff__code {
+  padding: 0 12px 0 4px;
+  white-space: pre;
+}
+
+.diff__marker {
+  display: inline-block;
+  width: 14px;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.diff__line--add td {
+  background: var(--add-bg);
+}
+
+.diff__line--del td {
+  background: var(--del-bg);
+}
+
+.diff__expand {
+  width: 100%;
+  padding: 12px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
