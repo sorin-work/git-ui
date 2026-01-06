@@ -26,7 +26,12 @@ provide(REPO_KEY, { name: computed(() => props.repo), info: repoInfo.data, curre
 const tabs = computed(() => [
   { label: 'Code', to: treeUrl(props.repo, currentRef.value), match: ['repo', 'tree', 'blob'] },
   { label: 'Commits', to: commitsUrl(props.repo, currentRef.value), match: ['commits', 'commit'] },
+  { label: 'Branches', to: `/${props.repo}/branches`, match: ['branches'] },
+  { label: 'Tags', to: `/${props.repo}/tags`, match: ['tags'] },
 ]);
+
+/** The ref picker only makes sense on pages that show one ref. */
+const showRefSelector = computed(() => !['branches', 'tags'].includes(String(route.name)));
 
 function selectRef(name: string) {
   const view = route.name === 'commits' ? commitsUrl : treeUrl;
@@ -68,7 +73,7 @@ function selectRef(name: string) {
       </RouterLink>
     </nav>
 
-    <div class="toolbar">
+    <div v-if="showRefSelector" class="toolbar">
       <RefSelector :repo="repo" :current="currentRef" @select="selectRef" />
     </div>
 
