@@ -14,13 +14,17 @@ export interface TreeEntry {
   size: number | null;
 }
 
-const LINE = /^(\d{6}) (blob|tree|commit) ([0-9a-f]+) +(-|\d+)\t(.*)$/;
+const RECORD = /^(\d{6}) (blob|tree|commit) ([0-9a-f]+) +(-|\d+)\t(.*)$/s;
 
-/** Parses `git ls-tree --long` output. */
+/**
+ * Parses `git ls-tree --long -z` output. Records are NUL-separated so file
+ * names are passed through verbatim; without -z git quotes names containing
+ * non-ASCII characters, quotes or tabs (e.g. "caf\303\251.md").
+ */
 export function parseLsTree(output: string): TreeEntry[] {
   const entries: TreeEntry[] = [];
-  for (const line of output.split('\n')) {
-    const match = LINE.exec(line);
+  for (const record of output.split('\0')) {
+    const match = RECORD.exec(record);
     if (!match) continue;
     const [, mode, type, sha, size, fullPath] = match as unknown as [
       string,
@@ -60,7 +64,7 @@ export async function listTree(
   path: string,
 ): Promise<TreeEntry[]> {
   const treeish = path === '' ? commit : `${commit}:${path}`;
-  const out = await git(repo.path, ['ls-tree', '--long', treeish]);
+  const out = await git(repo.path, ['ls-tree', '--long', '-z', treeish]);
   return sortEntries(
     parseLsTree(out).map((entry) => ({
       ...entry,

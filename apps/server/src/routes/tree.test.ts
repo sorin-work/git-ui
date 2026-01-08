@@ -64,6 +64,28 @@ describe('tree route', () => {
     expect(res.json().entries.map((e: { name: string }) => e.name)).toEqual(['README.md']);
   });
 
+  it('keeps unusual file names intact', async () => {
+    const repo = await TestRepo.create(root.dir, 'names');
+    await repo.commit('Odd names', {
+      'café.md': 'é',
+      'My Notes.txt': 'spaces',
+      '"quoted".txt': 'quotes',
+      'tab\there.txt': 'tab',
+      '日本語/ファイル.txt': 'cjk',
+    });
+    const res = await app.inject('/api/repos/names/tree');
+    expect(res.json().entries.map((e: { name: string }) => e.name)).toEqual([
+      '日本語',
+      '"quoted".txt',
+      'café.md',
+      'My Notes.txt',
+      'tab\there.txt',
+    ]);
+
+    const nested = await app.inject(`/api/repos/names/tree?path=${encodeURIComponent('日本語')}`);
+    expect(nested.json().entries[0].path).toBe('日本語/ファイル.txt');
+  });
+
   it('rejects files, missing paths and unknown refs', async () => {
     expect((await app.inject('/api/repos/demo/tree?path=README.md')).statusCode).toBe(400);
     expect((await app.inject('/api/repos/demo/tree?path=nope')).statusCode).toBe(404);
