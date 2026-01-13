@@ -64,6 +64,26 @@ describe('blob route', () => {
     expect(res.json().content).toBe('grüße\n');
   });
 
+  it('serves raw bytes with a content type', async () => {
+    const png = await app.inject('/api/repos/demo/raw?path=logo.png');
+    expect(png.statusCode).toBe(200);
+    expect(png.headers['content-type']).toBe('image/png');
+    expect(png.rawPayload.subarray(0, 4)).toEqual(Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+
+    const text = await app.inject('/api/repos/demo/raw?path=src/main.go');
+    expect(text.headers['content-type']).toBe('text/plain; charset=utf-8');
+    expect(text.body).toBe('package main\n\nfunc main() {}\n');
+  });
+
+  it('offers raw files as downloads', async () => {
+    const res = await app.inject(
+      `/api/repos/demo/raw?download=1&path=${encodeURIComponent('notes/über.txt')}`,
+    );
+    expect(res.headers['content-disposition']).toBe(
+      `attachment; filename="_ber.txt"; filename*=UTF-8''%C3%BCber.txt`,
+    );
+  });
+
   it('rejects directories, missing files and a missing path', async () => {
     expect((await app.inject('/api/repos/demo/blob?path=src')).statusCode).toBe(400);
     expect((await app.inject('/api/repos/demo/blob?path=nope.txt')).statusCode).toBe(404);
