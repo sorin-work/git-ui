@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
-import { getBlob } from '../api';
+import { getBlob, rawUrl } from '../api';
 import CodeView from '../components/CodeView.vue';
 import PathBreadcrumbs from '../components/PathBreadcrumbs.vue';
 import { useAsync } from '../composables/useAsync';
@@ -39,12 +39,29 @@ const lineCount = computed(() => {
           {{ formatBytes(blob.data.value.size) }}
           <template v-if="blob.data.value.language"> · {{ blob.data.value.language }}</template>
         </span>
-        <RouterLink :to="commitsUrl(repo, currentRef, path)" class="button button--small">
-          History
-        </RouterLink>
+        <span class="file__actions">
+          <a
+            :href="rawUrl(repo, blob.data.value.commit, path)"
+            class="button button--small"
+            target="_blank"
+            rel="noopener"
+            >Raw</a
+          >
+          <a :href="rawUrl(repo, blob.data.value.commit, path, true)" class="button button--small"
+            >Download</a
+          >
+          <RouterLink :to="commitsUrl(repo, currentRef, path)" class="button button--small">
+            History
+          </RouterLink>
+        </span>
       </header>
 
-      <div v-if="blob.data.value.binary" class="file__notice muted">Binary file, not shown.</div>
+      <div v-if="blob.data.value.image" class="file__image">
+        <img :src="rawUrl(repo, blob.data.value.commit, path)" :alt="blob.data.value.name" />
+      </div>
+      <div v-else-if="blob.data.value.binary" class="file__notice muted">
+        Binary file, not shown. Use Download to get it.
+      </div>
       <div v-else-if="blob.data.value.truncated" class="file__notice muted">
         This file is too large to display.
       </div>

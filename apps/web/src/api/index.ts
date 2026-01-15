@@ -1,4 +1,4 @@
-import { get, repoPath } from './client';
+import { get, repoPath, toQuery } from './client';
 import type {
   Blob,
   Branch,
@@ -36,6 +36,11 @@ export interface CommitFilters {
   q?: string;
   page?: number;
   pageSize?: number;
+}
+
+/** Direct URL to a file's bytes, for <img> tags, raw views and downloads. */
+export function rawUrl(repo: string, ref: string, path: string, download = false): string {
+  return `/api${repoPath(repo)}/raw${toQuery({ ref, path, download: download ? 1 : undefined })}`;
 }
 
 export function listCommits(repo: string, filters: CommitFilters): Promise<CommitPage> {

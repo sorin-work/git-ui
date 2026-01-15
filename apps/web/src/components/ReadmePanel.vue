@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { getBlob } from '../api';
+import { getBlob, rawUrl } from '../api';
 import { useAsync } from '../composables/useAsync';
-import { isMarkdown, renderMarkdown } from '../lib/markdown';
+import { isMarkdown, renderMarkdown, resolveRelative } from '../lib/markdown';
+import { blobUrl, parentPath } from '../lib/paths';
 
 const props = defineProps<{ repo: string; gitRef: string; path: string; name: string }>();
 
@@ -13,7 +14,12 @@ const readme = useAsync(
 
 const html = computed(() => {
   const content = readme.data.value?.content;
-  return content && isMarkdown(props.name) ? renderMarkdown(content) : null;
+  if (!content || !isMarkdown(props.name)) return null;
+  const folder = parentPath(props.path);
+  return renderMarkdown(content, {
+    image: (src) => rawUrl(props.repo, props.gitRef, resolveRelative(folder, src)),
+    link: (href) => blobUrl(props.repo, props.gitRef, resolveRelative(folder, href)),
+  });
 });
 </script>
 
