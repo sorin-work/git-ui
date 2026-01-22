@@ -8,6 +8,10 @@ export function blobUrl(repo: string, ref: string, path: string): string {
   return `/${repo}/blob/${ref}/${path}`;
 }
 
+export function blameUrl(repo: string, ref: string, path: string): string {
+  return `/${repo}/blame/${ref}/${path}`;
+}
+
 export function commitsUrl(repo: string, ref: string, path = ''): string {
   return `/${repo}/commits/${ref}${path ? `?path=${encodeURIComponent(path)}` : ''}`;
 }

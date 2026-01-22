@@ -6,7 +6,7 @@ import CodeView from '../components/CodeView.vue';
 import PathBreadcrumbs from '../components/PathBreadcrumbs.vue';
 import { useAsync } from '../composables/useAsync';
 import { useRepo } from '../composables/useRepo';
-import { commitsUrl, formatBytes, joinPathParam } from '../lib/paths';
+import { blameUrl, commitsUrl, formatBytes, joinPathParam } from '../lib/paths';
 
 const route = useRoute();
 const { name: repo, currentRef } = useRepo();
@@ -50,6 +50,13 @@ const lineCount = computed(() => {
           <a :href="rawUrl(repo, blob.data.value.commit, path, true)" class="button button--small"
             >Download</a
           >
+          <RouterLink
+            v-if="blob.data.value.content !== null"
+            :to="blameUrl(repo, currentRef, path)"
+            class="button button--small"
+          >
+            Blame
+          </RouterLink>
           <RouterLink :to="commitsUrl(repo, currentRef, path)" class="button button--small">
             History
           </RouterLink>

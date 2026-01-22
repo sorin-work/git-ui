@@ -121,6 +121,28 @@ export interface CommitWithDiff {
   stats: DiffStats;
 }
 
+export interface BlameLine {
+  number: number;
+  content: string;
+  sha: string;
+  originalNumber: number;
+}
+
+export interface BlameCommit {
+  author: string;
+  email: string;
+  date: string;
+  summary: string;
+}
+
+export interface Blame {
+  ref: string;
+  commit: string;
+  path: string;
+  lines: BlameLine[];
+  commits: Record<string, BlameCommit>;
+}
+
 export interface Branch {
   name: string;
   sha: string;

@@ -24,7 +24,11 @@ const currentRef = computed(
 provide(REPO_KEY, { name: computed(() => props.repo), info: repoInfo.data, currentRef });
 
 const tabs = computed(() => [
-  { label: 'Code', to: treeUrl(props.repo, currentRef.value), match: ['repo', 'tree', 'blob'] },
+  {
+    label: 'Code',
+    to: treeUrl(props.repo, currentRef.value),
+    match: ['repo', 'tree', 'blob', 'blame'],
+  },
   { label: 'Commits', to: commitsUrl(props.repo, currentRef.value), match: ['commits', 'commit'] },
   { label: 'Branches', to: `/${props.repo}/branches`, match: ['branches'] },
   { label: 'Tags', to: `/${props.repo}/tags`, match: ['tags'] },

@@ -1020,3 +1020,44 @@ pre {
   max-width: 100%;
   max-height: 70vh;
 }
+
+/* Blame */
+
+.blame__group-start td {
+  border-top: 1px solid var(--border);
+}
+
+.blame tr:first-child td {
+  border-top: 0;
+}
+
+.blame__commit {
+  display: flex;
+  gap: 8px;
+  width: 340px;
+  max-width: 340px;
+  padding: 0 10px;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.blame td {
+  vertical-align: top;
+}
+
+.blame__summary {
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+}
+
+.blame__meta {
+  flex: none;
+}
+
+.blame__age {
+  width: 3px;
+  padding: 0;
+  background: var(--accent);
+}

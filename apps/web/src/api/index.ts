@@ -1,5 +1,6 @@
 import { get, repoPath, toQuery } from './client';
 import type {
+  Blame,
   Blob,
   Branch,
   CommitPage,
@@ -36,6 +37,10 @@ export interface CommitFilters {
   q?: string;
   page?: number;
   pageSize?: number;
+}
+
+export function getBlame(repo: string, ref: string, path: string): Promise<Blame> {
+  return get<Blame>(`${repoPath(repo)}/blame`, { ref, path });
 }
 
 /** Direct URL to a file's bytes, for <img> tags, raw views and downloads. */
