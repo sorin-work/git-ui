@@ -7,6 +7,7 @@ import PathBreadcrumbs from '../components/PathBreadcrumbs.vue';
 import { useAsync } from '../composables/useAsync';
 import { useRepo } from '../composables/useRepo';
 import { blameUrl, commitsUrl, formatBytes, joinPathParam } from '../lib/paths';
+import { plural } from '../lib/text';
 
 const route = useRoute();
 const { name: repo, currentRef } = useRepo();
@@ -35,7 +36,9 @@ const lineCount = computed(() => {
     <div v-if="blob.data.value" class="panel file">
       <header class="file__header">
         <span class="file__meta muted">
-          <template v-if="blob.data.value.content !== null">{{ lineCount }} lines · </template>
+          <template v-if="blob.data.value.content !== null"
+            >{{ plural(lineCount, 'line') }} ·
+          </template>
           {{ formatBytes(blob.data.value.size) }}
           <template v-if="blob.data.value.language"> · {{ blob.data.value.language }}</template>
         </span>

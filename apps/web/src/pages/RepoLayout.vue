@@ -6,6 +6,7 @@ import RefSelector from '../components/RefSelector.vue';
 import { useAsync } from '../composables/useAsync';
 import { REPO_KEY } from '../composables/useRepo';
 import { commitsUrl, treeUrl } from '../lib/paths';
+import { plural } from '../lib/text';
 
 const props = defineProps<{ repo: string }>();
 const route = useRoute();
@@ -61,7 +62,8 @@ function selectRef(name: string) {
         </p>
       </div>
       <div v-if="repoInfo.data.value" class="repo__counts muted">
-        {{ repoInfo.data.value.branches }} branches · {{ repoInfo.data.value.tags }} tags
+        {{ plural(repoInfo.data.value.branches, 'branch', 'branches') }} ·
+        {{ plural(repoInfo.data.value.tags, 'tag') }}
       </div>
     </header>
 

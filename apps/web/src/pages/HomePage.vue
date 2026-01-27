@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import { listRepos } from '../api';
 import { useAsync } from '../composables/useAsync';
+import { plural } from '../lib/text';
 import { relativeTime } from '../lib/time';
 
 const { data: repos, error, loading } = useAsync(listRepos);
@@ -24,7 +25,7 @@ const visible = computed(() => {
     <header class="page-header">
       <div>
         <h1>Repositories</h1>
-        <p v-if="repos" class="muted">{{ repos.length }} repositories</p>
+        <p v-if="repos" class="muted">{{ plural(repos.length, 'repository', 'repositories') }}</p>
       </div>
       <input
         v-model="filter"

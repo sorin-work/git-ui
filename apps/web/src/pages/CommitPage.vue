@@ -6,6 +6,7 @@ import DiffView from '../components/DiffView.vue';
 import { useAsync } from '../composables/useAsync';
 import { useRepo } from '../composables/useRepo';
 import { commitUrl, treeUrl } from '../lib/paths';
+import { plural } from '../lib/text';
 import { formatDateTime, relativeTime } from '../lib/time';
 
 const route = useRoute();
@@ -64,9 +65,10 @@ const commit = computed(() => result.data.value?.commit);
       </article>
 
       <p class="diff-summary">
-        <strong>{{ result.data.value.stats.files }}</strong> files changed,
-        <span class="added">{{ result.data.value.stats.additions }} additions</span>,
-        <span class="deleted">{{ result.data.value.stats.deletions }} deletions</span>
+        <strong>{{ plural(result.data.value.stats.files, 'file') }}</strong> changed,
+        <span class="added">{{ plural(result.data.value.stats.additions, 'addition') }}</span
+        >,
+        <span class="deleted">{{ plural(result.data.value.stats.deletions, 'deletion') }}</span>
       </p>
 
       <DiffView v-for="file in result.data.value.files" :key="file.path" :file="file" />

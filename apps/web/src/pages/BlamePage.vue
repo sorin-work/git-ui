@@ -8,6 +8,7 @@ import { useRepo } from '../composables/useRepo';
 import { highlightLines } from '../lib/highlight';
 import { languageForPath } from '../lib/languages';
 import { blobUrl, commitUrl, joinPathParam } from '../lib/paths';
+import { plural } from '../lib/text';
 import { relativeTime } from '../lib/time';
 
 const route = useRoute();
@@ -53,7 +54,7 @@ const rows = computed(() =>
     <div v-if="result.data.value" class="panel file">
       <header class="file__header">
         <span class="file__meta muted">
-          Blame · {{ Object.keys(result.data.value.commits).length }} commits
+          Blame · {{ plural(Object.keys(result.data.value.commits).length, 'commit') }}
         </span>
         <RouterLink :to="blobUrl(repo, currentRef, path)" class="button button--small">
           View file
