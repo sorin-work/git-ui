@@ -17,15 +17,23 @@ export interface CommitSummary {
 }
 
 const FIELDS = ['%H', '%h', '%P', '%an', '%ae', '%aI', '%cn', '%ce', '%cI', '%s'];
-export const LOG_FORMAT = FIELDS.join('|');
+/**
+ * Fields are separated by the ASCII unit separator and commits by NUL (`-z`),
+ * characters that can't appear in names or subjects. A visible delimiter such
+ * as "|" breaks as soon as a commit message contains it.
+ */
+const FIELD_SEPARATOR = '\x1f';
+export const LOG_FORMAT = FIELDS.join('%x1f');
 
-/** Parses `git log --format=LOG_FORMAT` output, one commit per line. */
+/** Parses `git log -z --format=LOG_FORMAT` output. */
 export function parseLog(output: string): CommitSummary[] {
   return output
-    .split('\n')
-    .filter((line) => line.trim() !== '')
-    .map((line) => {
-      const [sha, shortSha, parents, an, ae, ad, cn, ce, cd, subject] = line.split('|');
+    .split('\0')
+    .map((record) => record.replace(/^\n/, ''))
+    .filter((record) => record.trim() !== '')
+    .map((record) => {
+      const [sha, shortSha, parents, an, ae, ad, cn, ce, cd, subject] =
+        record.split(FIELD_SEPARATOR);
       return {
         sha: sha ?? '',
         shortSha: shortSha ?? '',
@@ -54,6 +62,7 @@ export async function listCommits(
 ): Promise<CommitSummary[]> {
   const args = [
     'log',
+    '-z',
     `--format=${LOG_FORMAT}`,
     `--skip=${options.skip}`,
     `--max-count=${options.limit}`,

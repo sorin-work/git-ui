@@ -57,6 +57,16 @@ describe('commits route', () => {
     expect(body.hasMore).toBe(false);
   });
 
+  it('keeps subjects with separators and unicode intact', async () => {
+    const repo = await TestRepo.create(root.dir, 'odd');
+    await repo.commit('feat: a | b | c — “quoted” 🚀', { a: '1' }, { author: 'Zoë | Admin' });
+    const res = await app.inject('/api/repos/odd/commits');
+    expect(res.json().items[0]).toMatchObject({
+      subject: 'feat: a | b | c — “quoted” 🚀',
+      author: { name: 'Zoë | Admin' },
+    });
+  });
+
   it('paginates', async () => {
     const page1 = (await app.inject('/api/repos/demo/commits?pageSize=2')).json();
     const page3 = (await app.inject('/api/repos/demo/commits?pageSize=2&page=3')).json();
