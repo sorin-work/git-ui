@@ -39,7 +39,10 @@ describe('repository routes', () => {
   it('lists repositories with their latest commit', async () => {
     const res = await app.inject('/api/repos');
     expect(res.statusCode).toBe(200);
-    expect(res.json().repos).toEqual([
+    const repos = res.json().repos;
+    // Newer git versions print UTC as "Z" instead of "+00:00"; compare instants.
+    expect(new Date(repos[1].lastCommit.date).toISOString()).toBe('2025-11-20T10:00:00.000Z');
+    expect(repos).toEqual([
       {
         name: 'empty',
         description: null,
@@ -56,7 +59,7 @@ describe('repository routes', () => {
           sha: head,
           subject: 'Add about page',
           author: 'Maya Chen',
-          date: '2025-11-20T10:00:00+00:00',
+          date: expect.any(String),
         },
       },
     ]);

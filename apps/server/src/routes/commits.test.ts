@@ -51,8 +51,10 @@ describe('commits route', () => {
       sha: shas[4],
       shortSha: shas[4]!.slice(0, 7),
       parents: [shas[3]],
-      author: { name: 'Cleo Ray', email: 'cleo@example.org', date: '2025-12-01T08:30:00+00:00' },
+      author: { name: 'Cleo Ray', email: 'cleo@example.org' },
     });
+    // Newer git versions print UTC as "Z" instead of "+00:00"; compare instants.
+    expect(new Date(body.items[0].author.date).toISOString()).toBe('2025-12-01T08:30:00.000Z');
     expect(body.items[4].parents).toEqual([]);
     expect(body.hasMore).toBe(false);
   });
