@@ -1,0 +1,21 @@
+name: git-ui
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      # The folder with your repositories, mounted read-only.
+      - ${REPOS_PATH:-./repos}:/repos:ro
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    depends_on:
+      - server
+    ports:
+      - '${WEB_PORT:-8090}:80'
