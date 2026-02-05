@@ -7,9 +7,12 @@ services:
       dockerfile: apps/server/Dockerfile
     environment:
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      # Adds a few sample repositories when the folder is empty.
+      SEED_DEMO: ${SEED_DEMO:-true}
     volumes:
-      # The folder with your repositories, mounted read-only.
-      - ${REPOS_PATH:-./repos}:/repos:ro
+      # The folder with your repositories. git-ui only reads from it, apart
+      # from creating the demo repositories in an empty folder.
+      - ${REPOS_PATH:-./repos}:/repos
 
   web:
     build:

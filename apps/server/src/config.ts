@@ -8,6 +8,11 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   /** Directory whose subdirectories are the repositories to serve. */
   REPOS_DIR: z.string().min(1).default('./repos'),
+  /** Create sample repositories on startup when REPOS_DIR has none. */
+  SEED_DEMO: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
 });
 
 export interface Config {
@@ -16,6 +21,7 @@ export interface Config {
   port: number;
   logLevel: string;
   reposDir: string;
+  seedDemo: boolean;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -31,5 +37,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     port: e.PORT,
     logLevel: e.LOG_LEVEL,
     reposDir: path.resolve(e.REPOS_DIR),
+    seedDemo: e.SEED_DEMO,
   };
 }
