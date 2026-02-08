@@ -1,7 +1,41 @@
 import { execFile } from 'node:child_process';
 
-/** Arguments added to every invocation so user or system config can't change the output. */
-const BASE_ARGS = ['--no-pager', '-c', 'color.ui=never', '-c', 'core.pager=cat'];
+/**
+ * Arguments added to every invocation. Besides keeping the output stable,
+ * they switch off config that could make git run programs: the repositories
+ * we serve are not necessarily trusted.
+ */
+const BASE_ARGS = [
+  '--no-pager',
+  '-c',
+  'color.ui=never',
+  '-c',
+  'core.pager=cat',
+  '-c',
+  'core.fsmonitor=false',
+  '-c',
+  'core.hooksPath=/dev/null',
+];
+
+/**
+ * Diff drivers set up in a repository's .gitattributes and config (textconv,
+ * external diff) are programs git runs when it shows content. Never let a
+ * repository we only want to display run its own programs.
+ */
+const NO_PROGRAM_FLAGS: Record<string, string[]> = {
+  show: ['--no-textconv', '--no-ext-diff'],
+  log: ['--no-textconv', '--no-ext-diff'],
+  diff: ['--no-textconv', '--no-ext-diff'],
+  blame: ['--no-textconv'],
+};
+
+/** Inserts NO_PROGRAM_FLAGS right after the subcommand (skipping leading `-c x=y` pairs). */
+export function withSafetyFlags(args: readonly string[]): string[] {
+  let i = 0;
+  while (args[i] === '-c') i += 2;
+  const flags = NO_PROGRAM_FLAGS[args[i] ?? ''];
+  return flags ? [...args.slice(0, i + 1), ...flags, ...args.slice(i + 1)] : [...args];
+}
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 const DEFAULT_MAX_BUFFER = 32 * 1024 * 1024;
@@ -54,7 +88,10 @@ function run<T extends string | Buffer>(
   return new Promise((resolve, reject) => {
     execFile(
       'git',
-      [...BASE_ARGS, ...args],
+      // Repositories mounted from the host are often owned by another user, and
+      // git refuses to open those ("dubious ownership"). Trust exactly the
+      // repository being read, not every directory.
+      [...BASE_ARGS, '-c', `safe.directory=${repoPath}`, ...withSafetyFlags(args)],
       {
         cwd: repoPath,
         encoding,
