@@ -5,6 +5,7 @@ import { errorHandler } from './lib/error-handler.js';
 import { blameRoutes } from './routes/blame.js';
 import { blobRoutes } from './routes/blob.js';
 import { commitRoutes } from './routes/commits.js';
+import { compareRoutes } from './routes/compare.js';
 import { refRoutes } from './routes/refs.js';
 import { repoRoutes } from './routes/repos.js';
 import { treeRoutes } from './routes/tree.js';
@@ -31,6 +32,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   await app.register(commitRoutes, { prefix: '/api', registry });
   await app.register(refRoutes, { prefix: '/api', registry });
   await app.register(blameRoutes, { prefix: '/api', registry });
+  await app.register(compareRoutes, { prefix: '/api', registry });
 
   return app;
 }
