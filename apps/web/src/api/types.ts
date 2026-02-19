@@ -143,6 +143,18 @@ export interface Blame {
   commits: Record<string, BlameCommit>;
 }
 
+export interface Comparison {
+  base: { ref: string; commit: string };
+  head: { ref: string; commit: string };
+  mergeBase: string | null;
+  aheadBy: number;
+  behindBy: number;
+  commits: CommitSummary[];
+  truncated: boolean;
+  files: FileDiff[];
+  stats: DiffStats;
+}
+
 export interface Branch {
   name: string;
   sha: string;

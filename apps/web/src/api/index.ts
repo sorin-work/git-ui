@@ -5,6 +5,7 @@ import type {
   Branch,
   CommitPage,
   CommitWithDiff,
+  Comparison,
   Repo,
   RepoSummary,
   Tag,
@@ -37,6 +38,10 @@ export interface CommitFilters {
   q?: string;
   page?: number;
   pageSize?: number;
+}
+
+export function compareRefs(repo: string, base: string, head: string): Promise<Comparison> {
+  return get<Comparison>(`${repoPath(repo)}/compare`, { base, head });
 }
 
 export function getBlame(repo: string, ref: string, path: string): Promise<Blame> {

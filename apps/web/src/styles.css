@@ -1061,3 +1061,18 @@ pre {
   padding: 0;
   background: var(--accent);
 }
+
+/* Compare */
+
+.compare-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+}
+
+.compare-commits {
+  margin-bottom: 16px;
+}

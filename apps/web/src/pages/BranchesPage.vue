@@ -64,6 +64,17 @@ const scale = computed(() => Math.max(1, ...branches.value.flatMap((b) => [b.ahe
           </span>
           <span class="divergence__count">{{ branch.ahead }}</span>
         </div>
+        <RouterLink
+          v-if="!branch.isDefault && result.data.value?.defaultBranch"
+          :to="{
+            name: 'compare',
+            params: { repo },
+            query: { base: result.data.value.defaultBranch, head: branch.name },
+          }"
+          class="button button--small"
+        >
+          Compare
+        </RouterLink>
       </li>
     </ul>
     <p v-else-if="result.data.value" class="muted">No branches match.</p>
