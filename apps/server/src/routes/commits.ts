@@ -22,12 +22,13 @@ export async function commitRoutes(app: FastifyInstance, { registry }: { registr
     const path = repoPath(query.path);
     const { ref, commit } = await resolveCommit(repo, query.ref);
 
+    // Ask for one extra commit to know whether another page exists.
     const items = await listCommits(repo, commit, {
       path: path || undefined,
       author: query.author || undefined,
       query: query.q || undefined,
       skip: (query.page - 1) * query.pageSize,
-      limit: query.pageSize,
+      limit: query.pageSize + 1,
     });
 
     return {
@@ -35,8 +36,8 @@ export async function commitRoutes(app: FastifyInstance, { registry }: { registr
       commit,
       page: query.page,
       pageSize: query.pageSize,
-      hasMore: items.length === query.pageSize,
-      items,
+      hasMore: items.length > query.pageSize,
+      items: items.slice(0, query.pageSize),
     };
   });
 

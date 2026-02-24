@@ -78,6 +78,12 @@ describe('commits route', () => {
     expect(page3.hasMore).toBe(false);
   });
 
+  it('does not offer another page when the last one is exactly full', async () => {
+    const page = (await app.inject('/api/repos/demo/commits?pageSize=5')).json();
+    expect(page.items).toHaveLength(5);
+    expect(page.hasMore).toBe(false);
+  });
+
   it('filters by path, author and message', async () => {
     const byPath = (await app.inject('/api/repos/demo/commits?path=src/parser.ts')).json();
     expect(byPath.items).toHaveLength(3);
