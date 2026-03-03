@@ -8,6 +8,7 @@ import { commitRoutes } from './routes/commits.js';
 import { compareRoutes } from './routes/compare.js';
 import { refRoutes } from './routes/refs.js';
 import { repoRoutes } from './routes/repos.js';
+import { searchRoutes } from './routes/search.js';
 import { treeRoutes } from './routes/tree.js';
 
 export async function buildApp(config: Config): Promise<FastifyInstance> {
@@ -33,6 +34,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   await app.register(refRoutes, { prefix: '/api', registry });
   await app.register(blameRoutes, { prefix: '/api', registry });
   await app.register(compareRoutes, { prefix: '/api', registry });
+  await app.register(searchRoutes, { prefix: '/api', registry });
 
   return app;
 }
