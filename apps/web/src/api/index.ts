@@ -8,6 +8,7 @@ import type {
   Comparison,
   Repo,
   RepoSummary,
+  SearchResult,
   Tag,
   Tree,
 } from './types';
@@ -42,6 +43,19 @@ export interface CommitFilters {
 
 export function compareRefs(repo: string, base: string, head: string): Promise<Comparison> {
   return get<Comparison>(`${repoPath(repo)}/compare`, { base, head });
+}
+
+export function searchCode(
+  repo: string,
+  ref: string,
+  q: string,
+  caseSensitive = false,
+): Promise<SearchResult> {
+  return get<SearchResult>(`${repoPath(repo)}/search`, {
+    ref,
+    q,
+    case: caseSensitive ? 1 : undefined,
+  });
 }
 
 export function getBlame(repo: string, ref: string, path: string): Promise<Blame> {

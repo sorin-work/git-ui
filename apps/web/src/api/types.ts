@@ -155,6 +155,20 @@ export interface Comparison {
   stats: DiffStats;
 }
 
+export interface SearchMatch {
+  path: string;
+  line: number;
+  text: string;
+}
+
+export interface SearchResult {
+  ref: string;
+  commit: string;
+  query: string;
+  matches: SearchMatch[];
+  truncated: boolean;
+}
+
 export interface Branch {
   name: string;
   sha: string;

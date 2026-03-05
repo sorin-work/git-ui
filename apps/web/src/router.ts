@@ -7,6 +7,7 @@ import CommitsPage from './pages/CommitsPage.vue';
 import ComparePage from './pages/ComparePage.vue';
 import HomePage from './pages/HomePage.vue';
 import RepoLayout from './pages/RepoLayout.vue';
+import SearchPage from './pages/SearchPage.vue';
 import TagsPage from './pages/TagsPage.vue';
 import TreePage from './pages/TreePage.vue';
 
@@ -28,6 +29,7 @@ export const router = createRouter({
         { path: 'branches', name: 'branches', component: BranchesPage },
         { path: 'compare', name: 'compare', component: ComparePage },
         { path: 'tags', name: 'tags', component: TagsPage },
+        { path: 'search/:ref', name: 'search', component: SearchPage },
       ],
     },
   ],

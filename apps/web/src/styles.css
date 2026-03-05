@@ -1076,3 +1076,35 @@ pre {
 .compare-commits {
   margin-bottom: 16px;
 }
+
+/* Code search */
+
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+}
+
+.search-file {
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.search-file__header {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-muted);
+  font-family: var(--mono);
+  font-size: 13px;
+}
+
+.search-file__line {
+  color: inherit;
+}
+
+mark {
+  border-radius: 2px;
+  background: #fde68a;
+  color: inherit;
+}
