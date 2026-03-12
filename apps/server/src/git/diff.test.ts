@@ -141,6 +141,30 @@ describe('parseDiff', () => {
     expect(file!.oldPath).toBeNull();
   });
 
+  it('flags lines without a final newline instead of counting them', () => {
+    const [file] = parseDiff(
+      lines(
+        'diff --git a/a.txt b/a.txt',
+        'index 1111111..2222222 100644',
+        '--- a/a.txt',
+        '+++ b/a.txt',
+        '@@ -1,2 +1,3 @@',
+        ' first',
+        '-last',
+        '\\ No newline at end of file',
+        '+last',
+        '+added',
+      ),
+    );
+    expect(file!.hunks[0]!.lines).toEqual([
+      { type: 'context', content: 'first', oldLine: 1, newLine: 1 },
+      { type: 'del', content: 'last', oldLine: 2, newLine: null, noNewline: true },
+      { type: 'add', content: 'last', oldLine: null, newLine: 2 },
+      { type: 'add', content: 'added', oldLine: null, newLine: 3 },
+    ]);
+    expect(file).toMatchObject({ additions: 2, deletions: 1 });
+  });
+
   it('returns nothing for an empty diff', () => {
     expect(parseDiff('')).toEqual([]);
   });

@@ -1108,3 +1108,10 @@ mark {
   background: #fde68a;
   color: inherit;
 }
+
+.diff__eof {
+  margin-left: 6px;
+  color: var(--del-text);
+  font-size: 11px;
+  user-select: none;
+}

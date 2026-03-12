@@ -84,6 +84,7 @@ export interface DiffLine {
   content: string;
   oldLine: number | null;
   newLine: number | null;
+  noNewline?: boolean;
 }
 
 export interface Hunk {

@@ -73,7 +73,10 @@ const anchor = computed(() => `diff-${encodeURIComponent(props.file.path)}`);
               <span class="diff__marker" aria-hidden="true">{{
                 line.type === 'add' ? '+' : line.type === 'del' ? '-' : ' '
               }}</span
-              >{{ line.content }}
+              >{{ line.content
+              }}<span v-if="line.noNewline" class="diff__eof" title="No newline at end of file"
+                >⏎̸</span
+              >
             </td>
           </tr>
         </tbody>

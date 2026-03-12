@@ -5,6 +5,8 @@ export interface DiffLine {
   content: string;
   oldLine: number | null;
   newLine: number | null;
+  /** The file ends on this line without a final newline. */
+  noNewline?: boolean;
 }
 
 export interface Hunk {
@@ -139,8 +141,13 @@ export function parseDiff(patch: string): FileDiff[] {
     } else if (marker === '-') {
       hunk.lines.push({ type: 'del', content, oldLine: oldLine++, newLine: null });
       file.deletions++;
-    } else if (marker === ' ' || marker === '\\') {
+    } else if (marker === ' ') {
       hunk.lines.push({ type: 'context', content, oldLine: oldLine++, newLine: newLine++ });
+    } else if (marker === '\\') {
+      // "\ No newline at end of file" describes the line before it; it is not
+      // a line of the file and must not move the line numbers.
+      const previous = hunk.lines.at(-1);
+      if (previous) previous.noNewline = true;
     }
   }
 
