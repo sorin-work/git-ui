@@ -6,6 +6,7 @@ import { blameRoutes } from './routes/blame.js';
 import { blobRoutes } from './routes/blob.js';
 import { commitRoutes } from './routes/commits.js';
 import { compareRoutes } from './routes/compare.js';
+import { insightsRoutes } from './routes/insights.js';
 import { refRoutes } from './routes/refs.js';
 import { repoRoutes } from './routes/repos.js';
 import { searchRoutes } from './routes/search.js';
@@ -35,6 +36,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   await app.register(blameRoutes, { prefix: '/api', registry });
   await app.register(compareRoutes, { prefix: '/api', registry });
   await app.register(searchRoutes, { prefix: '/api', registry });
+  await app.register(insightsRoutes, { prefix: '/api', registry });
 
   return app;
 }
