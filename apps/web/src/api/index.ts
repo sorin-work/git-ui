@@ -6,6 +6,7 @@ import type {
   CommitPage,
   CommitWithDiff,
   Comparison,
+  Insights,
   Repo,
   RepoSummary,
   SearchResult,
@@ -56,6 +57,10 @@ export function searchCode(
     q,
     case: caseSensitive ? 1 : undefined,
   });
+}
+
+export function getInsights(repo: string, ref: string): Promise<Insights> {
+  return get<Insights>(`${repoPath(repo)}/insights`, { ref });
 }
 
 export function getBlame(repo: string, ref: string, path: string): Promise<Blame> {

@@ -170,6 +170,24 @@ export interface SearchResult {
   truncated: boolean;
 }
 
+export interface Contributor {
+  name: string;
+  email: string;
+  commits: number;
+}
+
+export interface WeekActivity {
+  start: string;
+  commits: number;
+}
+
+export interface Insights {
+  ref: string;
+  commit: string;
+  contributors: Contributor[];
+  activity: WeekActivity[];
+}
+
 export interface Branch {
   name: string;
   sha: string;

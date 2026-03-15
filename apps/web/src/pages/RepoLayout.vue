@@ -34,6 +34,7 @@ const tabs = computed(() => [
   { label: 'Branches', to: `/${props.repo}/branches`, match: ['branches', 'compare'] },
   { label: 'Tags', to: `/${props.repo}/tags`, match: ['tags'] },
   { label: 'Search', to: `/${props.repo}/search/${currentRef.value}`, match: ['search'] },
+  { label: 'Insights', to: `/${props.repo}/insights/${currentRef.value}`, match: ['insights'] },
 ]);
 
 /** The ref picker only makes sense on pages that show one ref. */
@@ -42,8 +43,8 @@ const showRefSelector = computed(
 );
 
 function selectRef(name: string) {
-  if (route.name === 'search') {
-    void router.push({ path: `/${props.repo}/search/${name}`, query: route.query });
+  if (route.name === 'search' || route.name === 'insights') {
+    void router.push({ path: `/${props.repo}/${String(route.name)}/${name}`, query: route.query });
     return;
   }
   const view = route.name === 'commits' ? commitsUrl : treeUrl;
