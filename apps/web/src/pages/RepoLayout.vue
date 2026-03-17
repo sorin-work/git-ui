@@ -5,7 +5,7 @@ import { getRepo } from '../api';
 import RefSelector from '../components/RefSelector.vue';
 import { useAsync } from '../composables/useAsync';
 import { REPO_KEY } from '../composables/useRepo';
-import { commitsUrl, treeUrl } from '../lib/paths';
+import { commitsUrl, repoUrl, treeUrl } from '../lib/paths';
 import { plural } from '../lib/text';
 
 const props = defineProps<{ repo: string }>();
@@ -31,10 +31,14 @@ const tabs = computed(() => [
     match: ['repo', 'tree', 'blob', 'blame'],
   },
   { label: 'Commits', to: commitsUrl(props.repo, currentRef.value), match: ['commits', 'commit'] },
-  { label: 'Branches', to: `/${props.repo}/branches`, match: ['branches', 'compare'] },
-  { label: 'Tags', to: `/${props.repo}/tags`, match: ['tags'] },
-  { label: 'Search', to: `/${props.repo}/search/${currentRef.value}`, match: ['search'] },
-  { label: 'Insights', to: `/${props.repo}/insights/${currentRef.value}`, match: ['insights'] },
+  { label: 'Branches', to: repoUrl(props.repo, 'branches'), match: ['branches', 'compare'] },
+  { label: 'Tags', to: repoUrl(props.repo, 'tags'), match: ['tags'] },
+  { label: 'Search', to: repoUrl(props.repo, 'search', currentRef.value), match: ['search'] },
+  {
+    label: 'Insights',
+    to: repoUrl(props.repo, 'insights', currentRef.value),
+    match: ['insights'],
+  },
 ]);
 
 /** The ref picker only makes sense on pages that show one ref. */
@@ -44,7 +48,7 @@ const showRefSelector = computed(
 
 function selectRef(name: string) {
   if (route.name === 'search' || route.name === 'insights') {
-    void router.push({ path: `/${props.repo}/${String(route.name)}/${name}`, query: route.query });
+    void router.push({ path: repoUrl(props.repo, String(route.name), name), query: route.query });
     return;
   }
   const view = route.name === 'commits' ? commitsUrl : treeUrl;
