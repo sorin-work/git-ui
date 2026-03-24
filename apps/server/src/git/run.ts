@@ -1,4 +1,5 @@
-import { execFile } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
+import type { Readable } from 'node:stream';
 
 /**
  * Arguments added to every invocation. Besides keeping the output stable,
@@ -79,6 +80,17 @@ export interface GitOptions {
   env?: Record<string, string>;
 }
 
+/** Full argument list and environment for one git call. */
+function invocation(repoPath: string, args: readonly string[], env: Record<string, string> = {}) {
+  return {
+    // Repositories mounted from the host are often owned by another user, and
+    // git refuses to open those ("dubious ownership"). Trust exactly the
+    // repository being read, not every directory.
+    args: [...BASE_ARGS, '-c', `safe.directory=${repoPath}`, ...withSafetyFlags(args)],
+    env: { ...process.env, GIT_TERMINAL_PROMPT: '0', LC_ALL: 'C', ...env },
+  };
+}
+
 function run<T extends string | Buffer>(
   repoPath: string,
   args: readonly string[],
@@ -86,23 +98,16 @@ function run<T extends string | Buffer>(
   options: GitOptions,
 ): Promise<T> {
   return new Promise((resolve, reject) => {
+    const call = invocation(repoPath, args, options.env);
     execFile(
       'git',
-      // Repositories mounted from the host are often owned by another user, and
-      // git refuses to open those ("dubious ownership"). Trust exactly the
-      // repository being read, not every directory.
-      [...BASE_ARGS, '-c', `safe.directory=${repoPath}`, ...withSafetyFlags(args)],
+      call.args,
       {
         cwd: repoPath,
         encoding,
         timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
         maxBuffer: options.maxBuffer ?? DEFAULT_MAX_BUFFER,
-        env: {
-          ...process.env,
-          GIT_TERMINAL_PROMPT: '0',
-          LC_ALL: 'C',
-          ...options.env,
-        },
+        env: call.env,
         windowsHide: true,
       },
       (error, stdout, stderr) => {
@@ -129,4 +134,19 @@ export function git(repoPath: string, args: readonly string[], options: GitOptio
 /** Like `git()` but returns raw bytes, for file contents. */
 export function gitBuffer(repoPath: string, args: readonly string[], options: GitOptions = {}) {
   return run<Buffer>(repoPath, args, 'buffer', options);
+}
+
+/**
+ * Streams git's stdout instead of buffering it, for output that can be large
+ * (archives). The stream errors with a GitError if git fails.
+ */
+export function gitStream(repoPath: string, args: readonly string[]): Readable {
+  const call = invocation(repoPath, args);
+  const child = spawn('git', call.args, { cwd: repoPath, env: call.env, windowsHide: true });
+  let stderr = '';
+  child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString()));
+  child.on('close', (code) => {
+    if (code !== 0) child.stdout.destroy(new GitError(args, code, stderr));
+  });
+  return child.stdout;
 }

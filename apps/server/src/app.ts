@@ -2,6 +2,7 @@ import Fastify, { type FastifyInstance } from 'fastify';
 import type { Config } from './config.js';
 import { RepoRegistry } from './git/repos.js';
 import { errorHandler } from './lib/error-handler.js';
+import { archiveRoutes } from './routes/archive.js';
 import { blameRoutes } from './routes/blame.js';
 import { blobRoutes } from './routes/blob.js';
 import { commitRoutes } from './routes/commits.js';
@@ -37,6 +38,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   await app.register(compareRoutes, { prefix: '/api', registry });
   await app.register(searchRoutes, { prefix: '/api', registry });
   await app.register(insightsRoutes, { prefix: '/api', registry });
+  await app.register(archiveRoutes, { prefix: '/api', registry });
 
   return app;
 }
