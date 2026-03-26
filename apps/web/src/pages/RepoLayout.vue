@@ -2,6 +2,7 @@
 import { computed, provide } from 'vue';
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
 import { getRepo } from '../api';
+import DownloadMenu from '../components/DownloadMenu.vue';
 import RefSelector from '../components/RefSelector.vue';
 import { useAsync } from '../composables/useAsync';
 import { REPO_KEY } from '../composables/useRepo';
@@ -40,6 +41,8 @@ const tabs = computed(() => [
     match: ['insights'],
   },
 ]);
+
+const isCodeView = computed(() => ['repo', 'tree', 'blob', 'blame'].includes(String(route.name)));
 
 /** The ref picker only makes sense on pages that show one ref. */
 const showRefSelector = computed(
@@ -93,6 +96,7 @@ function selectRef(name: string) {
 
     <div v-if="showRefSelector" class="toolbar">
       <RefSelector :repo="repo" :current="currentRef" @select="selectRef" />
+      <DownloadMenu v-if="isCodeView" :repo="repo" :git-ref="currentRef" />
     </div>
 
     <RouterView />

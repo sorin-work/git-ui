@@ -67,6 +67,11 @@ export function getBlame(repo: string, ref: string, path: string): Promise<Blame
   return get<Blame>(`${repoPath(repo)}/blame`, { ref, path });
 }
 
+/** Download link for the files at a ref. */
+export function archiveUrl(repo: string, ref: string, format: 'zip' | 'tar.gz'): string {
+  return `/api${repoPath(repo)}/archive${toQuery({ ref, format })}`;
+}
+
 /** Direct URL to a file's bytes, for <img> tags, raw views and downloads. */
 export function rawUrl(repo: string, ref: string, path: string, download = false): string {
   return `/api${repoPath(repo)}/raw${toQuery({ ref, path, download: download ? 1 : undefined })}`;

@@ -1209,3 +1209,41 @@ mark {
   font-size: 13px;
   white-space: nowrap;
 }
+
+/* Download menu */
+
+.download-menu {
+  position: relative;
+  margin-left: auto;
+}
+
+.download-menu summary {
+  list-style: none;
+}
+
+.download-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.download-menu__panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  padding: 6px;
+  box-shadow: 0 12px 32px rgb(15 23 42 / 16%);
+}
+
+.download-menu__panel a {
+  padding: 6px 10px;
+  border-radius: 4px;
+  color: var(--text);
+}
+
+.download-menu__panel a:hover {
+  background: var(--surface-muted);
+  text-decoration: none;
+}
