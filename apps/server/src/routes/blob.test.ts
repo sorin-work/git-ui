@@ -17,6 +17,9 @@ describe('blob route', () => {
       'big.txt': 'x'.repeat(MAX_DISPLAY_BYTES + 1),
       Dockerfile: 'FROM alpine\n',
       'notes/über.txt': 'grüße\n',
+      'site/index.html': '<script>fetch("/api/repos")</script>',
+      'site/app.js': 'alert(document.cookie)',
+      'site/logo.svg': '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>',
     });
     app = await testApp(root.dir);
   });
@@ -73,6 +76,22 @@ describe('blob route', () => {
     const text = await app.inject('/api/repos/demo/raw?path=src/main.go');
     expect(text.headers['content-type']).toBe('text/plain; charset=utf-8');
     expect(text.body).toBe('package main\n\nfunc main() {}\n');
+  });
+
+  it('never serves repository files as something the browser would run', async () => {
+    for (const file of ['site/index.html', 'site/app.js']) {
+      const res = await app.inject(`/api/repos/demo/raw?path=${file}`);
+      expect(res.headers['content-type']).toBe('text/plain; charset=utf-8');
+      expect(res.headers['x-content-type-options']).toBe('nosniff');
+      expect(res.headers['content-security-policy']).toMatch(/^sandbox;/);
+    }
+  });
+
+  it('serves SVG as an image but sandboxed so embedded scripts cannot run', async () => {
+    const res = await app.inject('/api/repos/demo/raw?path=site/logo.svg');
+    expect(res.headers['content-type']).toBe('image/svg+xml');
+    expect(res.headers['content-security-policy']).toContain("default-src 'none'");
+    expect(res.headers['content-security-policy']).toMatch(/^sandbox;/);
   });
 
   it('offers raw files as downloads', async () => {

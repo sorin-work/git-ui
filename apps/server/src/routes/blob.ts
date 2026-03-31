@@ -5,7 +5,7 @@ import type { RepoRegistry } from '../git/repos.js';
 import { objectType, repoPath, resolveCommit } from '../git/resolve.js';
 import { badRequest, notFound } from '../lib/errors.js';
 import { isImage, languageFor } from '../lib/languages.js';
-import { contentTypeFor } from '../lib/mime.js';
+import { contentTypeFor, RAW_FILE_HEADERS } from '../lib/mime.js';
 import { findRepo } from './repos.js';
 import { refPathQuery } from './tree.js';
 
@@ -35,6 +35,7 @@ export async function blobRoutes(app: FastifyInstance, { registry }: { registry:
     const name = path.slice(path.lastIndexOf('/') + 1);
     const bytes = await readBlobBytes(repo, commit, path);
     reply.header('Content-Type', contentTypeFor(name, looksBinary(bytes)));
+    reply.headers(RAW_FILE_HEADERS);
     reply.header('Cache-Control', 'private, max-age=60');
     if (query.download === '1') reply.header('Content-Disposition', attachment(name));
     return reply.send(bytes);
