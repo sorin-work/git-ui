@@ -57,6 +57,19 @@ export function sortEntries(entries: TreeEntry[]): TreeEntry[] {
   );
 }
 
+/** Files listed at most by `listAllFiles`. */
+export const MAX_FILES = 50_000;
+
+/** Every file path at a commit (recursively), for the go-to-file finder. */
+export async function listAllFiles(
+  repo: RepoLocation,
+  commit: string,
+): Promise<{ files: string[]; truncated: boolean }> {
+  const out = await git(repo.path, ['ls-tree', '-r', '-z', '--name-only', commit]);
+  const files = out.split('\0').filter(Boolean);
+  return { files: files.slice(0, MAX_FILES), truncated: files.length > MAX_FILES };
+}
+
 /** Entries of the directory at `path` ('' for the root) in `commit`. */
 export async function listTree(
   repo: RepoLocation,

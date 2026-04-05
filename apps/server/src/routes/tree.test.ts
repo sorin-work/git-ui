@@ -86,6 +86,22 @@ describe('tree route', () => {
     expect(nested.json().entries[0].path).toBe('日本語/ファイル.txt');
   });
 
+  it('lists every file for the finder', async () => {
+    const res = await app.inject('/api/repos/demo/files');
+    expect(res.json()).toMatchObject({
+      truncated: false,
+      files: [
+        'README.md',
+        'docs/guide.md',
+        'file10.txt',
+        'file2.txt',
+        'package.json',
+        'src/index.ts',
+        'src/util/strings.ts',
+      ],
+    });
+  });
+
   it('rejects files, missing paths and unknown refs', async () => {
     expect((await app.inject('/api/repos/demo/tree?path=README.md')).statusCode).toBe(400);
     expect((await app.inject('/api/repos/demo/tree?path=nope')).statusCode).toBe(404);

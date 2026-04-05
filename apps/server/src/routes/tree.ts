@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { RepoRegistry } from '../git/repos.js';
 import { objectType, repoPath, resolveCommit } from '../git/resolve.js';
-import { listTree } from '../git/tree.js';
+import { listAllFiles, listTree } from '../git/tree.js';
 import { badRequest, notFound } from '../lib/errors.js';
 import { findRepo } from './repos.js';
 
@@ -23,5 +23,12 @@ export async function treeRoutes(app: FastifyInstance, { registry }: { registry:
     if (type !== 'tree') throw badRequest(`"${path}" is not a directory`);
 
     return { ref, commit, path, entries: await listTree(repo, commit, path) };
+  });
+
+  app.get('/repos/:repo/files', async (request) => {
+    const repo = await findRepo(registry, request.params);
+    const query = refPathQuery.parse(request.query);
+    const { ref, commit } = await resolveCommit(repo, query.ref);
+    return { ref, commit, ...(await listAllFiles(repo, commit)) };
   });
 }
