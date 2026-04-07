@@ -67,6 +67,13 @@ export function getBlame(repo: string, ref: string, path: string): Promise<Blame
   return get<Blame>(`${repoPath(repo)}/blame`, { ref, path });
 }
 
+export function listFiles(repo: string, ref: string) {
+  return get<{ ref: string; commit: string; files: string[]; truncated: boolean }>(
+    `${repoPath(repo)}/files`,
+    { ref },
+  );
+}
+
 /** Download link for the files at a ref. */
 export function archiveUrl(repo: string, ref: string, format: 'zip' | 'tar.gz'): string {
   return `/api${repoPath(repo)}/archive${toQuery({ ref, format })}`;

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, provide } from 'vue';
+import { computed, onBeforeUnmount, onMounted, provide, ref } from 'vue';
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
 import { getRepo } from '../api';
 import DownloadMenu from '../components/DownloadMenu.vue';
+import FileFinder from '../components/FileFinder.vue';
 import RefSelector from '../components/RefSelector.vue';
 import { useAsync } from '../composables/useAsync';
 import { REPO_KEY } from '../composables/useRepo';
@@ -41,6 +42,23 @@ const tabs = computed(() => [
     match: ['insights'],
   },
 ]);
+
+const finderOpen = ref(false);
+
+/** "t" opens the file finder, unless the user is typing somewhere. */
+function onKeydown(event: KeyboardEvent) {
+  const target = event.target as HTMLElement | null;
+  const typing =
+    target &&
+    (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable);
+  if (event.key === 't' && !typing && !event.metaKey && !event.ctrlKey && !event.altKey) {
+    event.preventDefault();
+    finderOpen.value = true;
+  }
+}
+
+onMounted(() => document.addEventListener('keydown', onKeydown));
+onBeforeUnmount(() => document.removeEventListener('keydown', onKeydown));
 
 const isCodeView = computed(() => ['repo', 'tree', 'blob', 'blame'].includes(String(route.name)));
 
@@ -96,9 +114,20 @@ function selectRef(name: string) {
 
     <div v-if="showRefSelector" class="toolbar">
       <RefSelector :repo="repo" :current="currentRef" @select="selectRef" />
+      <button
+        v-if="isCodeView"
+        class="button"
+        type="button"
+        title="Go to file (t)"
+        @click="finderOpen = true"
+      >
+        Go to file <kbd>t</kbd>
+      </button>
       <DownloadMenu v-if="isCodeView" :repo="repo" :git-ref="currentRef" />
     </div>
 
     <RouterView />
+
+    <FileFinder v-if="finderOpen" :repo="repo" :git-ref="currentRef" @close="finderOpen = false" />
   </section>
 </template>
