@@ -1322,3 +1322,26 @@ kbd {
   border-top: 1px solid var(--border);
   font-size: 12px;
 }
+
+/* Line anchors */
+
+.code__number a {
+  color: inherit;
+}
+
+.code__number a::before {
+  content: attr(data-line);
+}
+
+.code__number a:hover {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.code__row--selected td {
+  background: #fff8c5;
+}
+
+.code__row--selected .code__number {
+  opacity: 1;
+}
