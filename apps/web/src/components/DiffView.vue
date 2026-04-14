@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import type { FileDiff } from '../api';
+import { splitRows, type DiffMode } from '../lib/diff';
 
-const props = defineProps<{ file: FileDiff }>();
+const props = withDefaults(defineProps<{ file: FileDiff; mode?: DiffMode }>(), {
+  mode: 'unified',
+});
 
 /** Very large diffs start collapsed so the page stays responsive. */
 const LARGE_DIFF_LINES = 400;
@@ -19,6 +22,10 @@ const STATUS_LABEL: Record<FileDiff['status'], string> = {
 };
 
 const anchor = computed(() => `diff-${encodeURIComponent(props.file.path)}`);
+
+const splitHunks = computed(() =>
+  props.mode === 'split' ? props.file.hunks.map((hunk) => splitRows(hunk)) : [],
+);
 </script>
 
 <template>
@@ -57,6 +64,35 @@ const anchor = computed(() => `diff-${encodeURIComponent(props.file.path)}`);
         </template>
         <template v-else>No content changes.</template>
       </p>
+      <table v-else-if="mode === 'split'" class="diff__table diff__table--split">
+        <colgroup>
+          <col class="diff__col-number" />
+          <col />
+          <col class="diff__col-number" />
+          <col />
+        </colgroup>
+        <tbody v-for="(hunk, h) in file.hunks" :key="h">
+          <tr class="diff__hunk">
+            <td colspan="4">{{ hunk.header }}</td>
+          </tr>
+          <tr v-for="(row, i) in splitHunks[h]" :key="i" class="diff__line">
+            <td class="diff__number" :data-line="row.left?.oldLine ?? ''"></td>
+            <td
+              class="diff__code"
+              :class="row.left ? `diff__cell--${row.left.type}` : 'diff__cell--empty'"
+            >
+              {{ row.left?.content }}
+            </td>
+            <td class="diff__number" :data-line="row.right?.newLine ?? ''"></td>
+            <td
+              class="diff__code"
+              :class="row.right ? `diff__cell--${row.right.type}` : 'diff__cell--empty'"
+            >
+              {{ row.right?.content }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
       <table v-else class="diff__table">
         <tbody v-for="(hunk, h) in file.hunks" :key="h">
           <tr class="diff__hunk">

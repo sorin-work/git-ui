@@ -1345,3 +1345,64 @@ kbd {
 .code__row--selected .code__number {
   opacity: 1;
 }
+
+/* Split diffs */
+
+.segmented {
+  display: inline-flex;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+.segmented button {
+  padding: 2px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.segmented button.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.diff-summary__toggle {
+  float: right;
+}
+
+.diff__table--split {
+  table-layout: fixed;
+}
+
+.diff__col-number {
+  width: 52px;
+}
+
+.diff__table--split .diff__code {
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.diff__table--split .diff__code + .diff__number {
+  border-left: 1px solid var(--border);
+}
+
+.diff__cell--add {
+  background: var(--add-bg);
+}
+
+.diff__cell--del {
+  background: var(--del-bg);
+}
+
+.diff__cell--empty {
+  background: var(--surface-muted);
+}

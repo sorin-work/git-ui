@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { getCommit } from '../api';
+import DiffModeToggle from '../components/DiffModeToggle.vue';
 import DiffView from '../components/DiffView.vue';
 import { useAsync } from '../composables/useAsync';
 import { useRepo } from '../composables/useRepo';
 import { commitUrl, treeUrl } from '../lib/paths';
+import { saveDiffMode, savedDiffMode } from '../lib/diff';
 import { plural } from '../lib/text';
 import { formatDateTime, relativeTime } from '../lib/time';
 
@@ -19,6 +21,9 @@ const result = useAsync(
 );
 
 const commit = computed(() => result.data.value?.commit);
+
+const diffMode = ref(savedDiffMode());
+watch(diffMode, saveDiffMode);
 </script>
 
 <template>
@@ -65,13 +70,19 @@ const commit = computed(() => result.data.value?.commit);
       </article>
 
       <p class="diff-summary">
+        <DiffModeToggle v-model="diffMode" class="diff-summary__toggle" />
         <strong>{{ plural(result.data.value.stats.files, 'file') }}</strong> changed,
         <span class="added">{{ plural(result.data.value.stats.additions, 'addition') }}</span
         >,
         <span class="deleted">{{ plural(result.data.value.stats.deletions, 'deletion') }}</span>
       </p>
 
-      <DiffView v-for="file in result.data.value.files" :key="file.path" :file="file" />
+      <DiffView
+        v-for="file in result.data.value.files"
+        :key="file.path"
+        :file="file"
+        :mode="diffMode"
+      />
     </template>
   </div>
 </template>

@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { compareRefs } from '../api';
+import DiffModeToggle from '../components/DiffModeToggle.vue';
 import DiffView from '../components/DiffView.vue';
 import RefSelector from '../components/RefSelector.vue';
 import { useAsync } from '../composables/useAsync';
 import { useRepo } from '../composables/useRepo';
 import { commitUrl } from '../lib/paths';
+import { saveDiffMode, savedDiffMode } from '../lib/diff';
 import { plural } from '../lib/text';
 import { relativeTime } from '../lib/time';
 
@@ -27,6 +29,9 @@ const result = useAsync(
 function update(query: { base?: string; head?: string }) {
   void router.replace({ query: { base: base.value, head: head.value, ...query } });
 }
+
+const diffMode = ref(savedDiffMode());
+watch(diffMode, saveDiffMode);
 </script>
 
 <template>
@@ -59,6 +64,7 @@ function update(query: { base?: string; head?: string }) {
 
       <template v-else>
         <p class="diff-summary">
+          <DiffModeToggle v-model="diffMode" class="diff-summary__toggle" />
           <strong>{{ plural(result.data.value.aheadBy, 'commit') }}</strong> ahead of
           <code>{{ base }}</code
           ><template v-if="result.data.value.behindBy">
@@ -87,7 +93,12 @@ function update(query: { base?: string; head?: string }) {
           </li>
         </ul>
 
-        <DiffView v-for="file in result.data.value.files" :key="file.path" :file="file" />
+        <DiffView
+          v-for="file in result.data.value.files"
+          :key="file.path"
+          :file="file"
+          :mode="diffMode"
+        />
       </template>
     </template>
   </div>
