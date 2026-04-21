@@ -4,6 +4,7 @@ import { blobSize, MAX_DISPLAY_BYTES } from '../git/blob.js';
 import type { RepoRegistry } from '../git/repos.js';
 import { objectType, repoPath, resolveCommit } from '../git/resolve.js';
 import { badRequest, notFound } from '../lib/errors.js';
+import { cached } from '../lib/cache.js';
 import { findRepo } from './repos.js';
 import { refPathQuery } from './tree.js';
 
@@ -22,6 +23,9 @@ export async function blameRoutes(app: FastifyInstance, { registry }: { registry
       throw badRequest('This file is too large to blame');
     }
 
-    return { ref, commit, path, ...(await blame(repo, commit, path)) };
+    const result = await cached(['blame', repo.path, commit, path], () =>
+      blame(repo, commit, path),
+    );
+    return { ref, commit, path, ...result };
   });
 }

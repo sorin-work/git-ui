@@ -4,6 +4,7 @@ import { commitDiff, diffStats, readCommit } from '../git/commit.js';
 import { listCommits } from '../git/log.js';
 import type { RepoRegistry } from '../git/repos.js';
 import { repoPath, resolveCommit } from '../git/resolve.js';
+import { cached } from '../lib/cache.js';
 import { findRepo } from './repos.js';
 
 const commitsQuery = z.object({
@@ -46,7 +47,12 @@ export async function commitRoutes(app: FastifyInstance, { registry }: { registr
     const { sha } = z.object({ sha: z.string().max(255) }).parse(request.params);
     const { commit } = await resolveCommit(repo, sha);
 
-    const [detail, files] = await Promise.all([readCommit(repo, commit), commitDiff(repo, commit)]);
-    return { commit: detail, files, stats: diffStats(files) };
+    return cached(['commit', repo.path, commit], async () => {
+      const [detail, files] = await Promise.all([
+        readCommit(repo, commit),
+        commitDiff(repo, commit),
+      ]);
+      return { commit: detail, files, stats: diffStats(files) };
+    });
   });
 }
