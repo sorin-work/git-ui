@@ -1,6 +1,7 @@
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { Config } from './config.js';
 import { RepoRegistry } from './git/repos.js';
+import { basicAuth } from './lib/basic-auth.js';
 import { errorHandler } from './lib/error-handler.js';
 import { archiveRoutes } from './routes/archive.js';
 import { blameRoutes } from './routes/blame.js';
@@ -20,6 +21,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   });
 
   app.setErrorHandler(errorHandler);
+  if (config.auth) app.addHook('onRequest', basicAuth(config.auth.username, config.auth.password));
   app.setNotFoundHandler((request, reply) => {
     reply.status(404).send({
       error: { code: 'not_found', message: `Route ${request.method} ${request.url} not found` },

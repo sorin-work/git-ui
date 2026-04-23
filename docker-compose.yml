@@ -9,6 +9,9 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       # Adds a few sample repositories when the folder is empty.
       SEED_DEMO: ${SEED_DEMO:-true}
+      # Set both to require a login (HTTP basic auth) for everything.
+      AUTH_USERNAME: ${AUTH_USERNAME:-}
+      AUTH_PASSWORD: ${AUTH_PASSWORD:-}
     volumes:
       # The folder with your repositories. git-ui only reads from it, apart
       # from creating the demo repositories in an empty folder.
