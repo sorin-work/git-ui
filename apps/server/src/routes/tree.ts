@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { RepoRegistry } from '../git/repos.js';
 import { objectType, repoPath, resolveCommit } from '../git/resolve.js';
+import { latestCommits } from '../git/latest.js';
 import { listAllFiles, listTree } from '../git/tree.js';
 import { cached } from '../lib/cache.js';
 import { badRequest, notFound } from '../lib/errors.js';
@@ -27,6 +28,26 @@ export async function treeRoutes(app: FastifyInstance, { registry }: { registry:
       listTree(repo, commit, path),
     );
     return { ref, commit, path, entries };
+  });
+
+  /** Last commit for every entry of a folder; loaded separately because it is slower. */
+  app.get('/repos/:repo/tree/latest', async (request) => {
+    const repo = await findRepo(registry, request.params);
+    const query = refPathQuery.parse(request.query);
+    const path = repoPath(query.path);
+    const { commit } = await resolveCommit(repo, query.ref);
+    if ((await objectType(repo, commit, path)) !== 'tree') throw notFound(`Folder "${path}"`);
+
+    const commits = await cached(['latest', repo.path, commit, path], async () => {
+      const entries = await listTree(repo, commit, path);
+      return latestCommits(
+        repo,
+        commit,
+        path,
+        entries.map((e) => e.name),
+      );
+    });
+    return { commit, path, commits };
   });
 
   app.get('/repos/:repo/files', async (request) => {

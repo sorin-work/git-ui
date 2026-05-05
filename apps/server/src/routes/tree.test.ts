@@ -86,6 +86,16 @@ describe('tree route', () => {
     expect(nested.json().entries[0].path).toBe('日本語/ファイル.txt');
   });
 
+  it('finds the last commit for each entry of a folder', async () => {
+    const res = await app.inject('/api/repos/demo/tree/latest');
+    const { commits } = res.json();
+    expect(commits['README.md'].subject).toBe('Initial commit');
+    expect(commits['src'].subject).toBe('Add sources');
+    expect(Object.keys(commits).sort()).toEqual(
+      ['README.md', 'docs', 'file10.txt', 'file2.txt', 'package.json', 'src'].sort(),
+    );
+  });
+
   it('lists every file for the finder', async () => {
     const res = await app.inject('/api/repos/demo/files');
     expect(res.json()).toMatchObject({
