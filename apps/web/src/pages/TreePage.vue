@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { getTree } from '../api';
+import { getLatestCommits, getTree } from '../api';
 import FileTree from '../components/FileTree.vue';
 import PathBreadcrumbs from '../components/PathBreadcrumbs.vue';
 import ReadmePanel from '../components/ReadmePanel.vue';
@@ -19,6 +19,13 @@ const explicitRef = computed(() => route.params.ref as string | undefined);
 const tree = useAsync(
   () => getTree(repo.value, explicitRef.value, path.value),
   () => [repo.value, explicitRef.value, path.value],
+);
+
+// Last commits come from a slower request, so the listing shows first.
+const latest = useAsync(
+  async () =>
+    tree.data.value ? getLatestCommits(repo.value, tree.data.value.commit, path.value) : {},
+  () => tree.data.value?.commit + ':' + path.value,
 );
 
 const readme = computed(() => (tree.data.value ? findReadme(tree.data.value.entries) : null));
@@ -42,6 +49,7 @@ const readme = computed(() => (tree.data.value ? findReadme(tree.data.value.entr
         :git-ref="currentRef"
         :path="path"
         :entries="tree.data.value.entries"
+        :latest="latest.data.value"
       />
       <ReadmePanel
         v-if="readme"

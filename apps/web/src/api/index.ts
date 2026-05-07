@@ -1,6 +1,7 @@
 import { get, repoPath, toQuery } from './client';
 import type {
   Blame,
+  CommitBrief,
   Blob,
   Branch,
   CommitPage,
@@ -27,6 +28,19 @@ export async function getRepo(repo: string): Promise<Repo> {
 
 export function getTree(repo: string, ref?: string, path?: string): Promise<Tree> {
   return get<Tree>(`${repoPath(repo)}/tree`, { ref, path });
+}
+
+export async function getLatestCommits(
+  repo: string,
+  ref: string | undefined,
+  path: string,
+): Promise<Record<string, CommitBrief>> {
+  return (
+    await get<{ commits: Record<string, CommitBrief> }>(`${repoPath(repo)}/tree/latest`, {
+      ref,
+      path,
+    })
+  ).commits;
 }
 
 export function getBlob(repo: string, ref: string | undefined, path: string): Promise<Blob> {

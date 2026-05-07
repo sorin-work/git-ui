@@ -1495,3 +1495,27 @@ kbd {
 .theme-toggle:hover {
   background: rgb(255 255 255 / 10%);
 }
+
+.file-tree__name {
+  width: 30%;
+  white-space: nowrap;
+}
+
+.file-tree__commit {
+  max-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-tree__commit a:hover {
+  color: var(--accent);
+}
+
+.file-tree__date {
+  width: 130px;
+  font-size: 13px;
+  text-align: right;
+  white-space: nowrap;
+}
