@@ -1,8 +1,9 @@
+import { inflateSync } from 'node:zlib';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { tempDir } from '../../test/repo.js';
 import { listTags } from '../git/refs.js';
 import { RepoRegistry } from '../git/repos.js';
-import { git } from '../git/run.js';
+import { git, gitBuffer } from '../git/run.js';
 import { createDemoRepos } from './demo-repos.js';
 
 describe('createDemoRepos', () => {
@@ -51,4 +52,25 @@ describe('createDemoRepos', () => {
     const first = await git(repo.path, ['log', '--reverse', '--format=%an %aI', 'main']);
     expect(first.split('\n')[0]).toBe('Maya Chen 2025-01-06T09:12:00+01:00');
   });
+});
+
+describe('demo screenshot', () => {
+  it('is a valid PNG', async () => {
+    const root = await tempDir();
+    try {
+      await createDemoRepos(root.dir);
+      const repo = (await new RepoRegistry(root.dir).get('aurora-notes'))!;
+      const bytes = await gitBuffer(repo.path, ['cat-file', 'blob', 'main:docs/screenshot.png']);
+      // Signature, then an IHDR chunk with the image size.
+      expect(bytes.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+      expect(bytes.readUInt32BE(16)).toBe(320);
+      expect(bytes.readUInt32BE(20)).toBe(160);
+      // The image data must inflate; the broken one did not.
+      const idat = bytes.indexOf('IDAT');
+      const length = bytes.readUInt32BE(idat - 4);
+      expect(() => inflateSync(bytes.subarray(idat + 4, idat + 4 + length))).not.toThrow();
+    } finally {
+      await root.cleanup();
+    }
+  }, 60_000);
 });

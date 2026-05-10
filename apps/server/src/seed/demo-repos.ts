@@ -12,9 +12,20 @@ const sam: Author = { name: 'Sam Rivera', email: 'sam@example.net' };
 const ana: Author = { name: 'Ana Ruiz', email: 'ana@pixel.example' };
 const tom: Author = { name: 'Tom Becker', email: 'tom@pixel.example' };
 
-/** A 16x16 teal square, so image previews have something to show. */
+/** A small mock terminal screenshot (320x160), so image previews have something to show. */
 const SCREENSHOT_PNG = Buffer.from(
-  'iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAGklEQVR42mMQ8ihTSpN8+P//PyMDHkDSgE4BAN3mHOlZRdiOAAAAAElFTkSuQmCC',
+  [
+    'iVBORw0KGgoAAAANSUhEUgAAAUAAAACgCAIAAADywSLLAAACW0lEQVR42u3cvS4EURiAYSOjkOioRNCLglKlX9m9CY',
+    'VCIXEB4gIkCoXCTezG9q6Aa5CISiOIQqNYmazsmRmz8bPHeZ5qMzmNT958mxEnW17fmgLiNG0EIGBAwICAIRF57Ynb',
+    'zaXBh5Xru5qTp88fJw/mqk/OXswMPrzuvvkdwNiyirfQRbrDghkX6X46Gcq4SHeYjMFXaBBw5foNPg+u3+Dz4PqteA',
+    '7YwCBgIKKAy945jz4ve+c8+rzsZZWXWGADQ3Ky2n9m8HdgiDhgwFdoQMCAgEHAwB/LX54eTQFsYEDAgIBBwICAAQED',
+    'AgYBAwIGBAyJyr9+dPHyLMaf8H5n368ZGxgQMCBgQMAgYEDAgIAhIdn86popgA0MCBgQMAgYEDAgYEDAIGBAwICAIV',
+    'ENrtTp97rmRZlWu2MINjAgYBAwIGBAwICAQcDARHClDtjAgIABAYOAAQEDAgYEDAIGBAwIGBLmSp3/xtU2NjAgYEDA',
+    'gIBBwICAAQFD6lypAzYwIGBAwCBgQMCAgAEBg4ABAQMChoQ1uFLn8ObYvPgJJxtHhmADg4ABAQMCBgQMAgYEDHwbV+',
+    'qADQwIGBAwCBgQMCBgQMAgYEDAgIAhYQ2u1On3uub1O1rtjiFgA4OAAQEDAgYEDAIGBAyMyZU6YAMDAgYEDAIGBAwI',
+    'GBAwCBgQMCBgSFiDK3UezrfNK2ULe1eGYAMDAgYEDAIGBAwIGAQMRMCVOmADAwIGBAwCBgQMCBgQMAgYEDAgYBAwIG',
+    'BAwICAQcCAgAEBAwIGAQMCBgQMAgYEDAgYEDAIGJhA73VTR2hl6hg9AAAAAElFTkSuQmCC',
+  ].join(''),
   'base64',
 );
 
