@@ -1,12 +1,20 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import { getBlob, rawUrl } from '../api';
 import CodeView from '../components/CodeView.vue';
 import PathBreadcrumbs from '../components/PathBreadcrumbs.vue';
 import { useAsync } from '../composables/useAsync';
 import { useRepo } from '../composables/useRepo';
-import { blameUrl, commitsUrl, formatBytes, joinPathParam } from '../lib/paths';
+import { isMarkdown, renderMarkdown, resolveRelative } from '../lib/markdown';
+import {
+  blameUrl,
+  blobUrl,
+  commitsUrl,
+  formatBytes,
+  joinPathParam,
+  parentPath,
+} from '../lib/paths';
 import { plural } from '../lib/text';
 
 const route = useRoute();
@@ -18,6 +26,19 @@ const blob = useAsync(
   () => getBlob(repo.value, currentRef.value, path.value),
   () => [repo.value, currentRef.value, path.value],
 );
+const blob_ = blob.data;
+
+/** Markdown files open rendered; "Code" shows the source with line numbers. */
+const view = ref<'preview' | 'code'>('preview');
+const preview = computed(() => {
+  const blob = blob_.value;
+  if (!blob?.content || !isMarkdown(blob.name)) return null;
+  const folder = parentPath(blob.path);
+  return renderMarkdown(blob.content, {
+    image: (src) => rawUrl(repo.value, blob.commit, resolveRelative(folder, src)),
+    link: (href) => blobUrl(repo.value, currentRef.value, resolveRelative(folder, href)),
+  });
+});
 
 const lineCount = computed(() => {
   const content = blob.data.value?.content;
@@ -43,6 +64,19 @@ const lineCount = computed(() => {
           <template v-if="blob.data.value.language"> · {{ blob.data.value.language }}</template>
         </span>
         <span class="file__actions">
+          <span v-if="preview" class="segmented" role="radiogroup" aria-label="View">
+            <button
+              v-for="mode in ['preview', 'code'] as const"
+              :key="mode"
+              type="button"
+              role="radio"
+              :aria-checked="view === mode"
+              :class="{ active: view === mode }"
+              @click="view = mode"
+            >
+              {{ mode === 'preview' ? 'Preview' : 'Code' }}
+            </button>
+          </span>
           <a
             :href="rawUrl(repo, blob.data.value.commit, path)"
             class="button button--small"
@@ -75,6 +109,13 @@ const lineCount = computed(() => {
       <div v-else-if="blob.data.value.truncated" class="file__notice muted">
         This file is too large to display.
       </div>
+      <!-- eslint-disable vue/no-v-html -- sanitized by renderMarkdown -->
+      <article
+        v-else-if="preview && view === 'preview'"
+        class="markdown"
+        v-html="preview"
+      ></article>
+      <!-- eslint-enable vue/no-v-html -->
       <CodeView
         v-else-if="blob.data.value.content !== null"
         :content="blob.data.value.content"
