@@ -98,6 +98,21 @@ describe('commits route', () => {
     expect(byMessage.items).toHaveLength(2);
   });
 
+  it('follows a file through renames', async () => {
+    const repo = await TestRepo.create(root.dir, 'renamed');
+    await repo.commit('Add store', { 'src/store.ts': 'export class Store {}\n' });
+    await repo.commit('Improve store', { 'src/store.ts': 'export class Store { x = 1; }\n' });
+    await repo.run(['mv', 'src/store.ts', 'src/file-store.ts']);
+    await repo.commit('Rename store');
+
+    const res = await app.inject('/api/repos/renamed/commits?path=src/file-store.ts');
+    expect(res.json().items.map((c: { subject: string }) => c.subject)).toEqual([
+      'Rename store',
+      'Improve store',
+      'Add store',
+    ]);
+  });
+
   it('treats search text literally', async () => {
     const res = await app.inject(`/api/repos/demo/commits?q=${encodeURIComponent('.*')}`);
     expect(res.json().items).toEqual([]);

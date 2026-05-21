@@ -47,6 +47,8 @@ export function parseLog(output: string): CommitSummary[] {
 
 export interface LogOptions {
   path?: string;
+  /** Keep following the file's history across renames (single files only). */
+  follow?: boolean;
   /** Matches author name or email, case-insensitive, as plain text. */
   author?: string;
   /** Searches commit messages, case-insensitive, as plain text. */
@@ -71,6 +73,7 @@ export async function listCommits(
   ];
   if (options.author) args.push(`--author=${options.author}`);
   if (options.query) args.push(`--grep=${options.query}`);
+  if (options.follow && options.path) args.push('--follow');
   args.push(commit, '--');
   if (options.path) args.push(options.path);
 

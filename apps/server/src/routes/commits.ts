@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { commitDiff, diffStats, readCommit } from '../git/commit.js';
 import { listCommits } from '../git/log.js';
 import type { RepoRegistry } from '../git/repos.js';
-import { repoPath, resolveCommit } from '../git/resolve.js';
+import { objectType, repoPath, resolveCommit } from '../git/resolve.js';
 import { cached } from '../lib/cache.js';
 import { findRepo } from './repos.js';
 
@@ -23,9 +23,13 @@ export async function commitRoutes(app: FastifyInstance, { registry }: { registr
     const path = repoPath(query.path);
     const { ref, commit } = await resolveCommit(repo, query.ref);
 
+    // The history of a single file continues through renames; folders can't be followed.
+    const follow = path !== '' && (await objectType(repo, commit, path)) === 'blob';
+
     // Ask for one extra commit to know whether another page exists.
     const items = await listCommits(repo, commit, {
       path: path || undefined,
+      follow,
       author: query.author || undefined,
       query: query.q || undefined,
       skip: (query.page - 1) * query.pageSize,
