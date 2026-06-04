@@ -24,6 +24,18 @@ export function errorHandler(
   if (error instanceof GitError && error.isNotFound) {
     return send(reply, 404, 'not_found', 'No such revision or path in this repository');
   }
+  if (error instanceof GitError && error.timedOut) {
+    request.log.warn({ args: error.args }, 'git timed out');
+    return send(
+      reply,
+      504,
+      'timeout',
+      'git took too long to answer. Try a smaller folder or range.',
+    );
+  }
+  if (error instanceof GitError && error.outputTooLarge) {
+    return send(reply, 413, 'too_large', 'The result is too large to display.');
+  }
   const status = (error as FastifyError).statusCode;
   if (status && status >= 400 && status < 500) {
     return send(reply, status, 'bad_request', error.message);

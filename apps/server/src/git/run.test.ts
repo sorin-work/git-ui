@@ -73,6 +73,19 @@ describe('git runner', () => {
     expect(withSafetyFlags(['ls-tree', 'HEAD'])).toEqual(['ls-tree', 'HEAD']);
   });
 
+  it('kills git when it runs past the timeout', async () => {
+    // hash-object --stdin waits for input that never comes.
+    const error = await git(dir, ['hash-object', '--stdin'], { timeoutMs: 200 }).catch((e) => e);
+    expect(error).toBeInstanceOf(GitError);
+    expect(error.timedOut).toBe(true);
+  });
+
+  it('reports output that is too large to buffer', async () => {
+    const error = await git(dir, ['log', '-p'], { maxBuffer: 10 }).catch((e) => e);
+    expect(error).toBeInstanceOf(GitError);
+    expect(error.outputTooLarge).toBe(true);
+  });
+
   it('does not run arguments through a shell', async () => {
     const error = await git(dir, ['rev-parse', '--verify', '$(touch pwned)']).catch((e) => e);
     expect(error).toBeInstanceOf(GitError);

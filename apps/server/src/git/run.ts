@@ -58,13 +58,24 @@ export class GitError extends Error {
   readonly args: readonly string[];
   readonly exitCode: number | null;
   readonly stderr: string;
+  /** git was killed because it ran longer than the timeout. */
+  readonly timedOut: boolean;
+  /** git produced more output than we are willing to buffer. */
+  readonly outputTooLarge: boolean;
 
-  constructor(args: readonly string[], exitCode: number | null, stderr: string) {
+  constructor(
+    args: readonly string[],
+    exitCode: number | null,
+    stderr: string,
+    reason: { timedOut?: boolean; outputTooLarge?: boolean } = {},
+  ) {
     super(`git ${args[0] ?? ''} failed: ${stderr.trim().split('\n')[0] ?? 'unknown error'}`);
     this.name = 'GitError';
     this.args = args;
     this.exitCode = exitCode;
     this.stderr = stderr;
+    this.timedOut = reason.timedOut ?? false;
+    this.outputTooLarge = reason.outputTooLarge ?? false;
   }
 
   /** The command failed because a ref, object or path does not exist. */
@@ -113,7 +124,12 @@ function run<T extends string | Buffer>(
       (error, stdout, stderr) => {
         if (error) {
           const code = typeof error.code === 'number' ? error.code : null;
-          reject(new GitError(args, code, String(stderr || error.message)));
+          reject(
+            new GitError(args, code, String(stderr || error.message), {
+              timedOut: error.killed === true && error.signal !== null,
+              outputTooLarge: error.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER',
+            }),
+          );
           return;
         }
         resolve(stdout as T);
