@@ -1519,3 +1519,83 @@ kbd {
   text-align: right;
   white-space: nowrap;
 }
+
+/* Small screens */
+
+@media (max-width: 760px) {
+  .container {
+    padding: 16px 12px 40px;
+  }
+
+  .topbar {
+    padding: 0 12px;
+  }
+
+  .repo__header h1 {
+    font-size: 18px;
+  }
+
+  .search-input {
+    width: 100%;
+  }
+
+  .toolbar .download-menu {
+    margin-left: 0;
+  }
+
+  /* The file list keeps name and size; the last-commit columns don't fit. */
+  .file-tree__commit,
+  .file-tree__date {
+    display: none;
+  }
+
+  .commit-row,
+  .ref-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .commit-row__actions {
+    width: 100%;
+  }
+
+  .divergence {
+    display: none;
+  }
+
+  .blame__commit {
+    width: 120px;
+    max-width: 120px;
+  }
+
+  .blame__meta {
+    display: none;
+  }
+
+  .contributors li {
+    grid-template-columns: 1fr auto;
+  }
+
+  .contributors__bar {
+    display: none;
+  }
+
+  .commit-header__meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .diff-summary__toggle {
+    float: none;
+    display: flex;
+    margin-bottom: 8px;
+  }
+
+  .finder-backdrop {
+    padding-top: 12px;
+  }
+
+  .markdown {
+    padding: 4px 16px 16px;
+  }
+}
