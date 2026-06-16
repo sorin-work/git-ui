@@ -4,12 +4,14 @@ A fast, read-only web interface for browsing the git repositories on a machine
 or server. Point it at a folder of repositories and get:
 
 - a repository list with descriptions and latest activity
-- a file browser for any branch, tag or commit, with syntax highlighting and
-  rendered READMEs
-- commit history with message, author and path filters
-- commit pages with a readable diff
+- a file browser for any branch, tag or commit, with syntax highlighting,
+  rendered Markdown, the last commit of every file and a go-to-file finder (`t`)
+- commit history with message, author and path filters (following renames)
+- commit pages with unified or side-by-side diffs
+- blame, compare, code search and contributor insights
 - branches (with how far ahead/behind the default branch they are) and tags
-- raw file views and downloads
+- raw files and zip/tar.gz downloads of any ref
+- dark mode and a layout that works on phones
 
 It never writes to your repositories and does not need a database.
 
@@ -42,6 +44,11 @@ npm run dev
 
 Open http://localhost:5174. The API listens on :4100 and the Vite dev server
 proxies `/api` to it.
+
+## API
+
+The web app is a thin client over a small JSON API, documented in
+[docs/api.md](docs/api.md).
 
 ## Scripts
 
