@@ -1480,8 +1480,24 @@ kbd {
   background: var(--surface-muted);
 }
 
-.theme-toggle {
+.help-button {
+  width: 28px;
+  height: 28px;
   margin-left: auto;
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 50%;
+  background: none;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.help-button:hover {
+  background: rgb(255 255 255 / 10%);
+}
+
+.theme-toggle {
   border: 1px solid rgb(255 255 255 / 20%);
   border-radius: 6px;
   background: none;
@@ -1598,4 +1614,45 @@ kbd {
   .markdown {
     padding: 4px 16px 16px;
   }
+}
+
+/* Keyboard help */
+
+.help-dialog {
+  align-self: flex-start;
+  width: 480px;
+  max-width: 100%;
+  padding: 16px 20px 20px;
+  box-shadow: var(--popover-shadow);
+}
+
+.help-dialog:focus {
+  outline: none;
+}
+
+.help-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.help-dialog__header h2 {
+  font-size: 17px;
+}
+
+.help-dialog__list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px 16px;
+  margin: 0;
+}
+
+.help-dialog__list dt {
+  white-space: nowrap;
+}
+
+.help-dialog__list dd {
+  margin: 0;
+  color: var(--text-muted);
 }
