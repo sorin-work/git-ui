@@ -104,10 +104,28 @@ export function splitHighlightedLines(html: string): string[] {
   return lines;
 }
 
+/**
+ * Above these sizes highlighting is skipped: highlight.js runs on the main
+ * thread and a large minified bundle (one enormous line) could freeze the tab
+ * for seconds.
+ */
+export const MAX_HIGHLIGHT_CHARS = 200_000;
+export const MAX_HIGHLIGHT_LINE = 3_000;
+
+export function shouldHighlight(text: string): boolean {
+  if (text.length > MAX_HIGHLIGHT_CHARS) return false;
+  let lineStart = 0;
+  for (let i = text.indexOf('\n'); i !== -1; i = text.indexOf('\n', i + 1)) {
+    if (i - lineStart > MAX_HIGHLIGHT_LINE) return false;
+    lineStart = i + 1;
+  }
+  return text.length - lineStart <= MAX_HIGHLIGHT_LINE;
+}
+
 /** Highlighted HTML for each line of `code`. Unknown languages are escaped plain text. */
 export function highlightLines(code: string, language: string | null): string[] {
   const text = code.endsWith('\n') ? code.slice(0, -1) : code;
-  if (!language || !hljs.getLanguage(language)) {
+  if (!language || !hljs.getLanguage(language) || !shouldHighlight(text)) {
     return text.split('\n').map(escapeHtml);
   }
   const html = hljs.highlight(text, { language, ignoreIllegals: true }).value;

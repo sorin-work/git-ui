@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { highlightLines, splitHighlightedLines } from './highlight';
+import { highlightLines, shouldHighlight, splitHighlightedLines } from './highlight';
 
 describe('splitHighlightedLines', () => {
   it('closes and reopens spans that cross line breaks', () => {
@@ -34,6 +34,15 @@ describe('highlightLines', () => {
     const [line] = highlightLines('const s = "<img onerror=x>";', 'javascript');
     expect(line).not.toContain('<img');
     expect(line).toContain('&lt;img');
+  });
+
+  it('does not highlight huge or minified files', () => {
+    const minified = `var a=1;${'b<c&&d();'.repeat(1000)}`;
+    const [line] = highlightLines(minified, 'javascript');
+    expect(line).not.toContain('<span');
+    expect(line).toContain('b&lt;c&amp;&amp;d();');
+    expect(shouldHighlight('x\n'.repeat(100))).toBe(true);
+    expect(shouldHighlight('x'.repeat(200_001))).toBe(false);
   });
 
   it('falls back to plain text for unregistered languages', () => {
