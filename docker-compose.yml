@@ -5,6 +5,7 @@ services:
     build:
       context: .
       dockerfile: apps/server/Dockerfile
+    restart: unless-stopped
     environment:
       LOG_LEVEL: ${LOG_LEVEL:-info}
       # Adds a few sample repositories when the folder is empty.
@@ -21,7 +22,9 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
     depends_on:
-      - server
+      server:
+        condition: service_healthy
     ports:
       - '${WEB_PORT:-8090}:80'
