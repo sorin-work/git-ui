@@ -6,6 +6,20 @@ import { git } from './run.js';
 export interface CommitDetail extends CommitSummary {
   /** Message without the subject line. */
   body: string;
+  /** People credited with "Co-authored-by:" trailers. */
+  coAuthors: { name: string; email: string }[];
+}
+
+/** Reads "Co-authored-by: Name <email>" trailers from a commit message body. */
+export function parseCoAuthors(body: string): { name: string; email: string }[] {
+  const people: { name: string; email: string }[] = [];
+  for (const match of body.matchAll(/^co-authored-by:\s*(.+?)\s*<([^>\s]+)>\s*$/gim)) {
+    const person = { name: match[1]!, email: match[2]! };
+    if (!people.some((p) => p.email.toLowerCase() === person.email.toLowerCase())) {
+      people.push(person);
+    }
+  }
+  return people;
 }
 
 const DETAIL_FORMAT = ['%H', '%h', '%P', '%an', '%ae', '%aI', '%cn', '%ce', '%cI', '%s', '%b'].join(
@@ -23,6 +37,7 @@ export async function readCommit(repo: RepoLocation, sha: string): Promise<Commi
     committer: { name: cn ?? '', email: ce ?? '', date: cd ?? '' },
     subject: subject ?? '',
     body: (body ?? '').trim(),
+    coAuthors: parseCoAuthors(body ?? ''),
   };
 }
 

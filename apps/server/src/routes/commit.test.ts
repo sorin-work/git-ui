@@ -35,6 +35,11 @@ describe('single commit route', () => {
     await root.cleanup();
   });
 
+  it('lists co-authors from trailers', async () => {
+    const res = await app.inject(`/api/repos/demo/commits/${second}`);
+    expect(res.json().commit.coAuthors).toEqual([]);
+  });
+
   it('returns the full message and parents', async () => {
     const res = await app.inject(`/api/repos/demo/commits/${second}`);
     expect(res.statusCode).toBe(200);

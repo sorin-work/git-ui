@@ -111,10 +111,15 @@ async function auroraNotes(dir: string) {
   );
 
   await repo.move('src/store.ts', 'src/storage/file-store.ts');
-  await repo.commit(priya, '2025-03-12T14:40:00+05:30', 'Move storage into its own module', {
-    'src/cli.ts': `#!/usr/bin/env node\nimport { homedir } from 'node:os';\nimport { join } from 'node:path';\nimport { Store } from './storage/file-store.js';\nimport { extractTags } from './tags.js';\n\nconst store = new Store(join(homedir(), '.aurora-notes.json'));\nconst [command, ...rest] = process.argv.slice(2);\n\nif (command === 'add') {\n  const note = store.add(rest.join(' '));\n  console.log(\`Added note #\${note.id}\`);\n} else if (command === 'tag') {\n  const tag = rest[0]?.toLowerCase();\n  for (const note of store.list().filter((n) => tag && extractTags(n.text).includes(tag))) {\n    console.log(\`#\${note.id} \${note.text}\`);\n  }\n} else {\n  for (const note of store.list()) console.log(\`#\${note.id} \${note.text}\`);\n}\n`,
-    'test/store.test.ts': `import { strict as assert } from 'node:assert';\nimport { test } from 'node:test';\nimport { Store } from '../src/storage/file-store.js';\n\ntest('adds notes with increasing ids', () => {\n  const store = new Store('/tmp/aurora-test.json');\n  assert.equal(store.add('a').id + 1, store.add('b').id);\n});\n`,
-  });
+  await repo.commit(
+    priya,
+    '2025-03-12T14:40:00+05:30',
+    'Move storage into its own module\n\nCo-authored-by: Leo Okafor <leo@aurora.example>',
+    {
+      'src/cli.ts': `#!/usr/bin/env node\nimport { homedir } from 'node:os';\nimport { join } from 'node:path';\nimport { Store } from './storage/file-store.js';\nimport { extractTags } from './tags.js';\n\nconst store = new Store(join(homedir(), '.aurora-notes.json'));\nconst [command, ...rest] = process.argv.slice(2);\n\nif (command === 'add') {\n  const note = store.add(rest.join(' '));\n  console.log(\`Added note #\${note.id}\`);\n} else if (command === 'tag') {\n  const tag = rest[0]?.toLowerCase();\n  for (const note of store.list().filter((n) => tag && extractTags(n.text).includes(tag))) {\n    console.log(\`#\${note.id} \${note.text}\`);\n  }\n} else {\n  for (const note of store.list()) console.log(\`#\${note.id} \${note.text}\`);\n}\n`,
+      'test/store.test.ts': `import { strict as assert } from 'node:assert';\nimport { test } from 'node:test';\nimport { Store } from '../src/storage/file-store.js';\n\ntest('adds notes with increasing ids', () => {\n  const store = new Store('/tmp/aurora-test.json');\n  assert.equal(store.add('a').id + 1, store.add('b').id);\n});\n`,
+    },
+  );
   await repo.commit(leo, '2025-03-20T19:05:00+00:00', 'Add search command', {
     'src/search.ts': `import type { Note } from './note.js';\n\nexport function search(notes: Note[], query: string): Note[] {\n  return notes.filter((note) => note.text.includes(query));\n}\n`,
   });

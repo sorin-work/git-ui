@@ -42,6 +42,13 @@ watch(diffMode, saveDiffMode);
             <time :datetime="commit.author.date" :title="formatDateTime(commit.author.date)">
               {{ relativeTime(commit.author.date) }}
             </time>
+            <template v-if="commit.coAuthors.length">
+              <span class="muted"> with </span>
+              <template v-for="(person, i) in commit.coAuthors" :key="person.email">
+                <strong :title="person.email">{{ person.name }}</strong
+                ><span v-if="i < commit.coAuthors.length - 1" class="muted">, </span>
+              </template>
+            </template>
             <template v-if="commit.committer.name !== commit.author.name">
               <span class="muted"> · committed by </span>
               <strong>{{ commit.committer.name }}</strong>

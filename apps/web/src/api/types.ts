@@ -68,6 +68,7 @@ export interface CommitSummary {
 
 export interface CommitDetail extends CommitSummary {
   body: string;
+  coAuthors: { name: string; email: string }[];
 }
 
 export interface CommitPage {
