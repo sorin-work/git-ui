@@ -84,6 +84,32 @@ describe('single commit route', () => {
     expect(files.every((f: { status: string }) => f.status === 'added')).toBe(true);
   });
 
+  it('shows what a merge brought in, compared with its first parent', async () => {
+    const repo = await TestRepo.create(root.dir, 'merges');
+    await repo.commit('Base', { 'a.txt': 'a\n' });
+    await repo.checkout('feature', true);
+    await repo.commit('Feature work', { 'feature.txt': 'new\n' });
+    await repo.checkout('main');
+    await repo.commit('Main work', { 'a.txt': 'a2\n' });
+    await repo.run([
+      '-c',
+      'user.name=T',
+      '-c',
+      'user.email=t@e.st',
+      'merge',
+      '--no-ff',
+      '-q',
+      '-m',
+      'Merge feature',
+      'feature',
+    ]);
+    const merge = (await repo.run(['rev-parse', 'HEAD'])).trim();
+
+    const res = await app.inject(`/api/repos/merges/commits/${merge}`);
+    expect(res.json().commit.parents).toHaveLength(2);
+    expect(res.json().files.map((f: { path: string }) => f.path)).toEqual(['feature.txt']);
+  });
+
   it('accepts abbreviated hashes and rejects unknown ones', async () => {
     expect((await app.inject(`/api/repos/demo/commits/${second.slice(0, 8)}`)).statusCode).toBe(
       200,

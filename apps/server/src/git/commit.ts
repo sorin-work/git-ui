@@ -41,12 +41,17 @@ export async function readCommit(repo: RepoLocation, sha: string): Promise<Commi
   };
 }
 
-/** Diff a commit introduced, compared with its (first) parent. */
+/**
+ * Diff a commit introduced, compared with its first parent. For merges this
+ * is what the merge brought into the branch; git's default for merges is a
+ * "combined" diff that only shows conflict resolutions (and usually nothing).
+ */
 export async function commitDiff(repo: RepoLocation, sha: string): Promise<FileDiff[]> {
   const out = await git(repo.path, [
     '-c',
     'core.quotepath=off',
     'show',
+    '--diff-merges=first-parent',
     '--format=',
     '--patch',
     '--find-renames',
