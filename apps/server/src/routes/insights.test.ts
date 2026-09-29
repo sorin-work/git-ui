@@ -30,6 +30,12 @@ describe('insights route', () => {
     await root.cleanup();
   });
 
+  it('reports languages by size', async () => {
+    const res = await app.inject('/api/repos/demo/languages');
+    expect(res.statusCode).toBe(200);
+    expect(res.json().languages).toEqual([]);
+  });
+
   it('returns contributors and a year of weekly activity ending at the newest commit', async () => {
     const res = await app.inject('/api/repos/demo/insights');
     expect(res.statusCode).toBe(200);
