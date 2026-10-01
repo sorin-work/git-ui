@@ -8,6 +8,7 @@ import type {
   CommitWithDiff,
   Comparison,
   Insights,
+  LanguageShare,
   Repo,
   RepoSummary,
   SearchResult,
@@ -75,6 +76,11 @@ export function searchCode(
 
 export function getInsights(repo: string, ref: string): Promise<Insights> {
   return get<Insights>(`${repoPath(repo)}/insights`, { ref });
+}
+
+export async function getLanguages(repo: string, ref: string): Promise<LanguageShare[]> {
+  return (await get<{ languages: LanguageShare[] }>(`${repoPath(repo)}/languages`, { ref }))
+    .languages;
 }
 
 export function getBlame(repo: string, ref: string, path: string): Promise<Blame> {

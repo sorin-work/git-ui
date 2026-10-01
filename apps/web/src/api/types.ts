@@ -189,6 +189,13 @@ export interface Insights {
   activity: WeekActivity[];
 }
 
+export interface LanguageShare {
+  name: string;
+  color: string;
+  bytes: number;
+  percent: number;
+}
+
 export interface Branch {
   name: string;
   sha: string;

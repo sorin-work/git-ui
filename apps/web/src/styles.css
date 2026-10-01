@@ -625,6 +625,60 @@ pre {
   font-weight: 700;
 }
 
+/* Languages */
+
+.languages {
+  margin-top: 16px;
+  padding: 12px 16px 14px;
+}
+
+.languages__heading {
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.languages__bar {
+  display: flex;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--border);
+}
+
+.languages__segment {
+  min-width: 2px;
+}
+
+.languages__segment + .languages__segment {
+  border-left: 2px solid var(--surface);
+}
+
+.languages__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
+.languages__list li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.languages__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+}
+
+.languages__name {
+  font-weight: 600;
+}
+
 /* README */
 
 .readme {

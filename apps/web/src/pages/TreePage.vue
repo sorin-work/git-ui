@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { getLatestCommits, getTree } from '../api';
+import { getLanguages, getLatestCommits, getTree } from '../api';
 import FileTree from '../components/FileTree.vue';
+import LanguageBar from '../components/LanguageBar.vue';
 import PathBreadcrumbs from '../components/PathBreadcrumbs.vue';
 import ReadmePanel from '../components/ReadmePanel.vue';
 import { useAsync } from '../composables/useAsync';
@@ -28,6 +29,13 @@ const latest = useAsync(
   () => tree.data.value?.commit + ':' + path.value,
 );
 
+// Only the repository root shows the language breakdown.
+const languages = useAsync(
+  async () =>
+    tree.data.value && !path.value ? getLanguages(repo.value, tree.data.value.commit) : [],
+  () => (path.value ? '' : tree.data.value?.commit),
+);
+
 const readme = computed(() => (tree.data.value ? findReadme(tree.data.value.entries) : null));
 </script>
 
@@ -51,6 +59,7 @@ const readme = computed(() => (tree.data.value ? findReadme(tree.data.value.entr
         :entries="tree.data.value.entries"
         :latest="latest.data.value"
       />
+      <LanguageBar v-if="!path && languages.data.value?.length" :languages="languages.data.value" />
       <ReadmePanel
         v-if="readme"
         :key="readme.path"
