@@ -1,4 +1,4 @@
-import { readdir, stat } from 'node:fs/promises';
+import { readdir, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { isSafeRepoName } from './validate.js';
 
@@ -31,17 +31,27 @@ export async function detectRepo(dir: string): Promise<{ bare: boolean } | null>
   return head && objects && refs ? { bare: true } : null;
 }
 
+function isInside(parent: string, child: string): boolean {
+  const relative = path.relative(parent, child);
+  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+
 /**
  * The repositories served by the app: every direct subdirectory of
  * `reposDir` that is a git repository (bare or with a working tree).
+ * Symlinks are followed only when they point at a directory inside
+ * `reposDir`, so a stray link cannot publish a repository from elsewhere
+ * on the machine.
  */
 export class RepoRegistry {
   constructor(readonly reposDir: string) {}
 
   async list(): Promise<RepoLocation[]> {
+    let base;
     let entries;
     try {
-      entries = await readdir(this.reposDir, { withFileTypes: true });
+      base = await realpath(this.reposDir);
+      entries = await readdir(base, { withFileTypes: true });
     } catch {
       return [];
     }
@@ -49,8 +59,11 @@ export class RepoRegistry {
     const found = await Promise.all(
       entries.map(async (entry): Promise<RepoLocation | null> => {
         if (entry.name.startsWith('.')) return null;
-        const dir = path.join(this.reposDir, entry.name);
-        if (!entry.isDirectory() && !(entry.isSymbolicLink() && (await exists(dir, 'dir')))) {
+        const dir = path.join(base, entry.name);
+        if (entry.isSymbolicLink()) {
+          const target = await realpath(dir).catch(() => null);
+          if (!target || !isInside(base, target) || !(await exists(target, 'dir'))) return null;
+        } else if (!entry.isDirectory()) {
           return null;
         }
         const repo = await detectRepo(dir);

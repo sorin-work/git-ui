@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, realpath, symlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { TestRepo, tempDir } from '../../test/repo.js';
@@ -24,9 +24,10 @@ describe('RepoRegistry', () => {
   afterAll(() => root.cleanup());
 
   it('finds working-tree and bare repositories, sorted by name', async () => {
+    const base = await realpath(root.dir);
     expect(await registry.list()).toEqual([
-      { name: 'tools', path: path.join(root.dir, 'tools.git'), bare: true },
-      { name: 'website', path: path.join(root.dir, 'website'), bare: false },
+      { name: 'tools', path: path.join(base, 'tools.git'), bare: true },
+      { name: 'website', path: path.join(base, 'website'), bare: false },
     ]);
   });
 
@@ -35,6 +36,31 @@ describe('RepoRegistry', () => {
     expect(await registry.get('not-a-repo')).toBeNull();
     expect(await registry.get('.hidden')).toBeNull();
     expect(await registry.get('../website')).toBeNull();
+  });
+
+  it('follows symlinks inside the repositories directory, but not out of it', async () => {
+    const outside = await tempDir();
+    try {
+      await TestRepo.create(outside.dir, 'private');
+      const linked = await tempDir();
+      try {
+        await TestRepo.create(linked.dir, 'website');
+        await symlink(path.join(linked.dir, 'website'), path.join(linked.dir, 'site'));
+        await symlink(path.join(outside.dir, 'private'), path.join(linked.dir, 'private'));
+        await symlink(path.join(linked.dir, 'gone'), path.join(linked.dir, 'dangling'));
+
+        const base = await realpath(linked.dir);
+        expect(await new RepoRegistry(linked.dir).list()).toEqual([
+          { name: 'site', path: path.join(base, 'site'), bare: false },
+          { name: 'website', path: path.join(base, 'website'), bare: false },
+        ]);
+        expect(await new RepoRegistry(linked.dir).get('private')).toBeNull();
+      } finally {
+        await linked.cleanup();
+      }
+    } finally {
+      await outside.cleanup();
+    }
   });
 
   it('returns an empty list when the directory is missing', async () => {
