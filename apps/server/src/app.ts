@@ -1,4 +1,4 @@
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { LogController, type FastifyInstance } from 'fastify';
 import type { Config } from './config.js';
 import { RepoRegistry } from './git/repos.js';
 import { basicAuth } from './lib/basic-auth.js';
@@ -17,7 +17,11 @@ import { treeRoutes } from './routes/tree.js';
 export async function buildApp(config: Config): Promise<FastifyInstance> {
   const app = Fastify({
     logger: config.logLevel === 'silent' ? false : { level: config.logLevel },
-    disableRequestLogging: config.env === 'test',
+    logController: new LogController({
+      // The docker healthcheck polls /api/health every 15 seconds; logging it
+      // would bury everything else.
+      disableRequestLogging: (request) => config.env === 'test' || request.url === '/api/health',
+    }),
   });
 
   app.setErrorHandler(errorHandler);
