@@ -14,9 +14,10 @@ services:
       AUTH_USERNAME: ${AUTH_USERNAME:-}
       AUTH_PASSWORD: ${AUTH_PASSWORD:-}
     volumes:
-      # The folder with your repositories. git-ui only reads from it, apart
-      # from creating the demo repositories in an empty folder.
-      - ${REPOS_PATH:-./repos}:/repos
+      # The folder with your repositories (REPOS_PATH=/home/me/code). git-ui
+      # only reads from it, apart from creating the demo repositories when it
+      # is empty. Without REPOS_PATH a named volume holds the demo data.
+      - ${REPOS_PATH:-repos}:/repos
 
   web:
     build:
@@ -28,3 +29,6 @@ services:
         condition: service_healthy
     ports:
       - '${WEB_PORT:-8090}:80'
+
+volumes:
+  repos:

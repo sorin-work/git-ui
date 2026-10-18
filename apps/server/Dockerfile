@@ -25,6 +25,9 @@ COPY apps/web/package.json apps/web/
 RUN npm ci --workspace apps/server --include-workspace-root=false --omit=dev \
   && npm cache clean --force
 COPY --from=build /app/apps/server/dist apps/server/dist
+# A volume mounted here starts out with this owner, so the server can create
+# the demo repositories in it.
+RUN mkdir /repos && chown node:node /repos
 
 WORKDIR /app/apps/server
 USER node
