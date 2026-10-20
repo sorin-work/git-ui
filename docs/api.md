@@ -43,6 +43,7 @@ in the API changes a repository.
 | `/api/repos/:repo/tags`         |                                                          | `{ tags }`, newest first                                       |
 | `/api/repos/:repo/search`       | `q` (≥ 2 chars), `ref`, `path`, `case=1`                 | `{ matches: [{ path, line, text }], truncated }`               |
 | `/api/repos/:repo/insights`     | `ref`                                                    | `{ contributors, activity }`, 52 weeks of commit counts        |
+| `/api/repos/:repo/languages`    | `ref`                                                    | `{ languages: [{ name, color, bytes, percent }] }`             |
 | `/api/repos/:repo/archive`      | `ref`, `format=zip\|tar.gz`                              | A download of the files at that ref                            |
 
 ### Notes
@@ -63,6 +64,11 @@ else is `text/plain` or `application/octet-stream`. Every raw response carries
 `X-Content-Type-Options: nosniff` and a sandboxing `Content-Security-Policy`,
 so HTML or SVG committed to a repository can never run scripts on git-ui's
 origin.
+
+**Languages** are counted by file size and recognised by extension. Lock
+files, minified files and `node_modules`, `vendor`, `dist`, `build` and
+`coverage` folders are left out, and languages under 1% are grouped as
+`Other`.
 
 **Search** is a literal (not regex) `git grep` at the given ref, skipping binary
 files, with at most 20 matches per file and 300 in total.
