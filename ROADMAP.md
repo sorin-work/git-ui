@@ -89,78 +89,6 @@ still open), and the README, the docs and the CHANGELOG (under an
 
 ## Next
 
-### 1. Repositories cannot make git run programs
-
-The runner in `server/git/run.ts` already turns off the pager, colors,
-`core.fsmonitor` and hooks, and passes `--no-textconv --no-ext-diff` to
-`show`, `log`, `diff` and `blame`. That is not every way a repository's own
-config can start a program. I checked two more with a throwaway repository and
-git 2.43, using the exact flags the runner adds:
-
-- `log.showSignature=true` and `gpg.program=/path/to/script` in the
-  repository's `.git/config`, plus one commit with a `gpgsig` header: a plain
-  `git log --format=%H -1` runs the script. Every history page and the
-  repository list (`lastCommit` in `server/git/summary.ts`) would do it.
-- `filter.evil.smudge=<script>` in the config and `* filter=evil` in a
-  committed `.gitattributes`: `git archive` runs the smudge command for every
-  file. That is the zip and tarball download.
-
-The same test showed that `color.diff=always` in the repository config beats
-the `color.ui=never` the runner sets, so `git show` prints escape codes and the
-diff parser reads garbage. Programs and output format are the same problem:
-the repository's config is input, and today only some of it is overridden.
-
-- One list of pinned config in `run.ts`, passed as `-c key=value` on every
-  call, with a comment per group:
-  - programs: `log.showSignature=false`, `gpg.program`, `gpg.ssh.program`
-    and `gpg.x509.program` set to `false` (the binary, which exits 1),
-    `core.fsmonitor=false`, `core.hooksPath=/dev/null`,
-    `core.sshCommand`, `diff.external` cleared, `blame.ignoreRevsFile` cleared
-    (a missing file makes every blame fail today);
-  - output: `color.diff`, `color.branch`, `color.grep`, `color.decorate`,
-    `color.blame.*` all `never`; `diff.noprefix=false`,
-    `diff.mnemonicPrefix=false`, `diff.relative=false`, `diff.srcPrefix` and
-    `diff.dstPrefix` back to `a/` and `b/`, `core.quotePath=false`,
-    `i18n.logOutputEncoding=UTF-8`, `log.decorate=false`, `log.showRoot=true`,
-    `grep.patternType=fixed`, `grep.lineNumber=false`;
-  - files outside the repository read through config:
-    `mailmap.file`, `format.signatureFile` cleared.
-- The environment: today `invocation()` copies all of `process.env`. Start
-  from an empty object and pass only `PATH`, `LANG` and the git variables we
-  set. Add `GIT_CONFIG_NOSYSTEM=1` and `GIT_CONFIG_GLOBAL=/dev/null` so the
-  host's own config does not change output either, and drop every inherited
-  `GIT_*` variable (`GIT_DIR`, `GIT_CONFIG_PARAMETERS`, `GIT_EXTERNAL_DIFF`,
-  `GIT_ALTERNATE_OBJECT_DIRECTORIES` among them).
-- Filters in `git archive`: there is no single switch, because the driver
-  names come from the repository. Read them first with
-  `git config --get-regexp '^filter\.'` (reading config runs nothing) and pass
-  `-c filter.<name>.smudge=cat -c filter.<name>.process= -c filter.<name>.required=false`
-  for each one. Whether an empty `process` really disables a long-running
-  filter has to be proven by the test, not assumed.
-- Tricky: `GIT_CONFIG_GLOBAL` needs git 2.32. The README promises 2.30. Either
-  raise the minimum (item 29 adds a start-up check) or fall back to `HOME`
-  pointing at an empty folder. I lean towards raising it to 2.32; Debian
-  bookworm and Ubuntu 22.04 are past it.
-- Tricky: `withSafetyFlags` skips leading `-c` pairs to find the subcommand.
-  Adding config keeps working only if every pinned value goes before the
-  caller's own `-c` pairs, as `BASE_ARGS` does now. A unit test should check
-  that a caller's `-c core.quotepath=off` still wins.
-- Tricky: `include.path` and `includeIf` in a repository config can pull in
-  any file the server can read. That only sets config, which is now pinned,
-  but it is a way to read a file's existence. I would accept that and say so.
-- Tests: `server/git/run.test.ts` for the argument and environment list. A
-  new `apps/server/test/hostile.ts` that builds a repository whose config sets
-  every program key above to a script that creates a marker file, with a
-  signed commit and a filter attribute. Then call every route against it
-  (tree, blob, raw, blame, commits, commit, compare, branches, tags, search,
-  insights, languages, archive) and assert the marker does not exist. One
-  more test with `color.diff=always` and `diff.noprefix=true` that checks the
-  commit route still parses.
-- Undecided: `refs/replace/` objects. They make `git log` show a different
-  commit than the one with that sha, which is surprising but runs nothing.
-  `GIT_NO_REPLACE_OBJECTS=1` would show the real history. I lean towards
-  setting it.
-
 ### 2. Repositories stay inside REPOS_DIR
 
 `RepoRegistry` follows symlinks only when they resolve inside `REPOS_DIR`
@@ -883,3 +811,25 @@ Authelia) that passes the user in a header.
   except through the proxy. Combine with `TRUST_PROXY` from item 5 and accept
   the header only from the proxy's address.
 - Depends on item 5.
+
+## Shipped
+
+### 1. Repositories cannot make git run programs
+
+Every git call now pins the config that could start a program or change the
+output (`PINNED_CONFIG` in `server/git/run.ts`) and runs with an empty
+environment plus `PATH` and `TMPDIR`, with the system, user and attribute
+config switched off and replace objects ignored. Archives list the
+repository's filter drivers and blank them, git only writes plain tar (the
+server gzips it, because `tar.<format>.command` can replace gzip), and a zip
+is refused with 409 `unsafe_config` when the repository redefines `zip` or
+names a filter that `-c` cannot reach. `apps/server/test/hostile.ts` builds a
+repository that sets all of this and the route tests call every endpoint on
+it. Differences: the git minimum stays at 2.30, because `HOME` is not passed
+at all, so older git finds no user config either; `blame.ignoreRevsFile` is a
+list `-c` cannot clear, so blame gets `--no-ignore-revs-file` instead;
+`GIT_NO_REPLACE_OBJECTS` is set; `grep` also gets `--no-textconv`;
+`core.sshCommand` and `format.signatureFile` are not pinned because no read
+command uses them (item 15 has to pin the latter). Still open: `include.path`
+can make git read any file the server can read as config, which only reveals
+whether it exists.
