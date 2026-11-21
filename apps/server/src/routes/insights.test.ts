@@ -51,4 +51,24 @@ describe('insights route', () => {
       { start: '2026-02-16', commits: 1 },
     ]);
   });
+
+  it('leaves commits from long before the newest year out of the walk', async () => {
+    const old = await TestRepo.create(root.dir, 'old');
+    await old.commit('ancient', { a: '0' }, { date: '2019-01-07T10:00:00Z' });
+    await old.commit('recent', { a: '1' }, { date: '2026-02-16T10:00:00Z' });
+    const body = (await app.inject('/api/repos/old/insights')).json();
+    expect(body.activity.reduce((n: number, w: { commits: number }) => n + w.commits, 0)).toBe(1);
+    expect(body.contributors[0].commits).toBe(2);
+  });
+
+  it('applies .mailmap to history and contributors alike', async () => {
+    const mapped = await TestRepo.create(root.dir, 'mapped');
+    await mapped.commit('one', { a: '1' }, { author: 'apop', email: 'ana@example.com' });
+    await mapped.commit('two', { '.mailmap': 'Ana Pop <ana@example.com>\n' });
+    const people = (await app.inject('/api/repos/mapped/insights')).json().contributors;
+    expect(people.map((p: { name: string }) => p.name)).toContain('Ana Pop');
+    expect(people.map((p: { name: string }) => p.name)).not.toContain('apop');
+    const history = (await app.inject('/api/repos/mapped/commits')).json().items;
+    expect(history.at(-1).author.name).toBe('Ana Pop');
+  });
 });

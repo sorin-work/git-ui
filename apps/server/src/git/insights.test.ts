@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bucketByWeek, parseShortlog } from './insights.js';
+import { bucketByWeek, newest, parseShortlog } from './insights.js';
 
 describe('parseShortlog', () => {
   it('reads counts, names and emails, most commits first', () => {
@@ -44,5 +44,13 @@ describe('bucketByWeek', () => {
     const weeks = bucketByWeek([at('2020-01-01T00:00:00Z')], at('2026-03-12T00:00:00Z'), 4);
     expect(weeks.every((w) => w.commits === 0)).toBe(true);
     expect(weeks).toHaveLength(4);
+  });
+});
+
+describe('newest', () => {
+  it('handles histories far too long to spread into Math.max', () => {
+    const times = Array.from({ length: 500_000 }, (_, i) => i);
+    expect(newest(times)).toBe(499_999);
+    expect(newest([])).toBe(-Infinity);
   });
 });
