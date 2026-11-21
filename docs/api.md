@@ -6,11 +6,19 @@ in the API changes a repository.
 ## Conventions
 
 - `:repo` is the repository's directory name without a trailing `.git`.
-- `ref` accepts a branch, tag or (abbreviated) commit sha. Without it the
-  repository's default branch is used. Refs containing `..`, `@{`, spaces or a
-  leading `-` are rejected with 400.
+- `ref` accepts a branch, tag or commit sha, looked up in this order: a full
+  sha, a branch, a tag, then a sha of at least 7 characters. So `v1` is the
+  branch when a branch and a tag are both called `v1`; `refs/tags/v1` (or
+  `refs/heads/v1`) picks one explicitly. Nothing else is accepted: no
+  `refs/remotes/…`, `refs/stash`, `@` or `heads/x`. Without `ref` the
+  repository's default branch is used, or `HEAD` when it is detached. Refs
+  containing `..`, `@{`, spaces or a leading `-` are rejected with 400.
+  Responses that return `ref` also return `kind`: `branch`, `tag` or
+  `commit`.
 - `path` is relative to the repository root (`src/lib`, no leading slash).
-  Paths with `..` segments or control characters are rejected with 400.
+  It is always a literal path: `*`, `?` and `:(…)` pathspec magic have no
+  special meaning. Paths with `..` segments or control characters are
+  rejected with 400.
 - Dates are ISO 8601 strings as git prints them (with the author's offset).
 - Errors look like `{ "error": { "code": "not_found", "message": "…" } }`:
 

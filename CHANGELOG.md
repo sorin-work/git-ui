@@ -2,11 +2,22 @@
 
 ## Unreleased
 
+### Changed
+
+- A ref is looked up as a full sha, a branch, a tag, then an abbreviated sha.
+  A branch now wins over a tag with the same name (`refs/tags/<name>` picks
+  the tag, and the tags page links that way), and `refs/stash`, remote
+  branches, `@` and `heads/x` are no longer accepted
+- API responses that include `ref` also include `kind` (`branch`, `tag` or
+  `commit`)
+
 ### Security
 
 - A repository's config can no longer make git run a program: signature
   checks and the gpg programs are switched off, and git starts with a clean
   environment without the host's config
+- Paths in requests are literal: `*`, `?` and `:(…)` pathspec magic no longer
+  act as patterns
 - Repository config can no longer change git's output (colors, diff prefixes,
   encodings) and break pages
 - Zip and tar.gz downloads are built by the server from git's objects instead

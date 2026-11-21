@@ -106,7 +106,18 @@ Refs and paths from the query string are validated before they reach git
 (`src/git/validate.ts`). Refs may only use letters, digits and `._/@+-`, and
 may not start with `-` or contain `..` or `@{`; paths may not contain `.` or
 `..` segments, backslashes or control characters. Refs are then resolved to a
-full commit sha with `rev-parse --verify --end-of-options`.
+full commit sha in a fixed order (`refCandidates` in `src/git/resolve.ts`):
+full sha, `refs/heads/<name>`, `refs/tags/<name>`, abbreviated sha, each with
+`rev-parse --verify --end-of-options`. git's own lookup would let a tag beat
+a branch of the same name and accept `refs/stash`, `@` or remote branches.
+
+After that, git only ever sees revisions that are resolved shas. Every
+command that names one puts `--end-of-options` before it (tested on git 2.30
+and 2.43), except `blame` and `grep`, which reject that flag even in 2.43;
+they get the sha through `assertFullSha`, which throws on anything else.
+Paths always come after `--`, and `GIT_LITERAL_PATHSPECS=1` makes them plain
+paths, so `*.md` or `:(exclude)src` in a request match only a file of that
+name.
 
 ### Parsing
 

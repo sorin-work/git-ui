@@ -51,7 +51,7 @@ still open), and the README, the docs and the CHANGELOG (under an
 | --- | ------------------------------------------- | ------- | ----------- | ---- | ---------- |
 | 1   | Repositories cannot make git run programs   | Shipped | security    | M    | -          |
 | 2   | Repositories stay inside REPOS_DIR          | Shipped | security    | M    | -          |
-| 3   | Paths and refs that mean one thing          | Next    | security    | S    | -          |
+| 3   | Paths and refs that mean one thing          | Shipped | security    | S    | -          |
 | 4   | Bounded git work                            | Next    | ops         | M    | -          |
 | 5   | Login throttling and security headers       | Next    | security    | S    | -          |
 | 6   | Insights for long histories                 | Later   | correctness | S    | -          |
@@ -88,51 +88,6 @@ still open), and the README, the docs and the CHANGELOG (under an
 | 37  | Login through a reverse proxy               | Maybe   | auth        | S    | 5          |
 
 ## Next
-
-### 3. Paths and refs that mean one thing
-
-Paths from the URL are passed to git after `--`, which stops them being read
-as options. They are still pathspecs. `normalizeRepoPath` keeps `:`, `*`, `?`
-and `[`, so `path=:(exclude)src` or `path=*.ts` on `/commits` and `/search`
-works as pathspec magic and globbing instead of naming a file. Nothing leaves
-the repository that way, but it is not what the API promises, it can be slow
-(`:(glob)**` over a large tree) and it makes every later item that passes a
-path harder to reason about.
-
-Refs have the same kind of problem. `resolveCommit` hands git
-`<name>^{commit}`, and git's lookup order decides what a name means: a tag
-`main` wins over the branch `main`, a branch called `deadbeef` loses to a
-commit whose sha starts with it, and `heads/x`, `refs/remotes/...`,
-`refs/stash` or `@` all resolve too.
-
-- Set `GIT_LITERAL_PATHSPECS=1` for every call in `run.ts`. Paths are then
-  exactly paths. Places that want patterns later (item 17) build the magic
-  themselves, for example `:(glob)`, which works even with literal pathspecs
-  on.
-- `resolveCommit` tries, in this order: a full 40 or 64 character sha;
-  `refs/heads/<name>`; `refs/tags/<name>`; an abbreviated sha of at least 7
-  characters. Each with `rev-parse --verify --quiet --end-of-options`. It
-  returns which one matched (`kind: 'branch' | 'tag' | 'commit'`) and the API
-  passes it on, so the web app can show "tag v1" rather than guess.
-- Only `refs/heads` and `refs/tags` can be named. `HEAD` stays allowed as the
-  fallback for a repository with a detached HEAD.
-- `--end-of-options` before revisions in the other commands too (`log`,
-  `show`, `ls-tree`, `blame`, `grep`, `merge-base`, `rev-list`, `shortlog`,
-  `archive`, `cat-file`). They only ever receive resolved shas today, so this
-  is defence in depth, which is why it belongs in the runner's tests rather
-  than every call site: a unit test that fails when an argument built from
-  the request is neither a sha nor after `--`.
-- Tricky: not every command took `--end-of-options` in git 2.30. Check each
-  against the minimum version from item 1 and leave out the ones that do not.
-- Tricky: when a branch and a tag share a name, the URL `/repo/tree/v1` now
-  always means the branch. The branches and tags pages link with the name
-  only, so the tag would become unreachable. Accept `refs/tags/v1` as the ref
-  in URLs for exactly that case, and have the tags page use it when a branch
-  of the same name exists.
-- Tests: `server/git/validate.test.ts` and route tests: `path=*.md` finds
-  nothing unless a file is called that, `:(exclude)` is a literal name, a tag
-  and a branch with the same name, a branch that looks like a sha, `refs/stash`
-  is refused.
 
 ### 4. Bounded git work
 
@@ -819,3 +774,20 @@ for both the folder and the git directory; and the check and the git call
 are not atomic, so the check is defence in depth, not a boundary, and the
 README says `REPOS_DIR` must only be writable by people who may read what
 the server can read.
+
+### 3. Paths and refs that mean one thing
+
+git runs with `GIT_LITERAL_PATHSPECS=1`, so a path in a request is only ever
+that path. `resolveCommit` looks a name up as a full sha, `refs/heads/<name>`,
+`refs/tags/<name>`, then an abbreviated sha of at least 7 characters, accepts
+`refs/heads/x`, `refs/tags/x` and `HEAD`, and nothing else; the API returns
+the `kind` it found. The tags page and the ref selector link a tag as
+`refs/tags/<name>` when a branch has the same name. Every command that names
+a revision puts `--end-of-options` before it. Differences: `blame` and `grep`
+reject `--end-of-options` in git 2.30 and still in 2.43, so they get
+`assertFullSha` instead, which throws unless the revision is a full sha. I
+checked the other commands against git 2.30.6 in a container. The web app
+does not show "tag v1" yet; it gets `kind` but only strips `refs/tags/` from
+the label. No runtime check that every request value reaches git as a sha
+or after `--`: with lookups in one place and the sha guard, I did not find
+a way to write one that would not just repeat the call sites.
