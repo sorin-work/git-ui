@@ -24,6 +24,15 @@ directory name without a trailing `.git`. Hidden directories are skipped, and
 symlinks are only followed when they resolve to a directory inside
 `REPOS_DIR`.
 
+A repository's git data can live somewhere else than its folder: a `.git`
+file names its git directory, a linked worktree's `commondir` names the main
+repository, `objects/info/alternates` adds other object stores, and `objects`
+or `refs` can be symlinks. `escapeReason` resolves all of these (alternates
+recursively) and leaves the repository out unless every one is inside
+`REPOS_DIR`. Each repository left out is logged once with the reason.
+Worktrees and alternates between repositories that are both in `REPOS_DIR`
+keep working.
+
 Listing on every request keeps things simple: repositories added or removed
 on disk show up without a restart, and a directory listing is cheap next to
 the git commands that follow.
@@ -60,6 +69,12 @@ All git access goes through `src/git/run.ts`:
   tar, which cannot be replaced, and the server gzips it. A repository that
   redefines `zip`, or a filter whose name cannot be passed to `-c`, gets a 409
   instead of a download.
+- git runs with `GIT_DIR` set to the checked git directory and `GIT_WORK_TREE`
+  to the repository folder. There is no discovery, so a repository that
+  disappears between the listing and the call is an error rather than
+  whatever repository sits further up, and `core.worktree` in a repository's
+  config cannot point git at a folder elsewhere. Bare repositories keep
+  reading `.mailmap` from `HEAD`.
 - `safe.directory` is set to the repository being read, for that call only.
   Repositories mounted into a container usually belong to a different user,
   and git would otherwise refuse to open them ("dubious ownership").

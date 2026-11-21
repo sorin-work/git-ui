@@ -12,6 +12,13 @@ skipped when:
   `.`, `_` and `-`
 - it is a symlink that points outside `REPOS_DIR`; move or clone the
   repository into the folder instead
+- its git data is outside `REPOS_DIR`: a `.git` file pointing elsewhere (a
+  worktree or submodule of a repository that is not served), a `commondir`
+  or `objects/info/alternates` entry outside the folder, or `objects` or
+  `refs` linked out of it. The server log says `repository left out` with the
+  reason. Move the main repository into `REPOS_DIR` too, or run
+  `git repack -a -d` and delete `objects/info/alternates` to stop borrowing
+  objects
 - another directory has the same name once `.git` is dropped (`notes` and
   `notes.git`); only one of them is shown
 

@@ -12,6 +12,10 @@
   encodings) and break pages
 - tar.gz downloads are compressed by the server; a zip is refused (409) when
   the repository redefines the zip format
+- A repository is left out when its git data is outside `REPOS_DIR` (a `.git`
+  file, `commondir`, alternates or linked `objects` and `refs`), and git runs
+  with an explicit git directory, so it never answers from a repository
+  further up or from a `core.worktree` elsewhere
 
 ## 1.0.0 (2026-11-03)
 
