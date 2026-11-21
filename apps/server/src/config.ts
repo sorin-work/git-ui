@@ -1,3 +1,4 @@
+import { availableParallelism } from 'node:os';
 import path from 'node:path';
 import { z } from 'zod';
 
@@ -15,6 +16,16 @@ const envSchema = z.object({
   /** Protect the API with HTTP basic auth when both are set. */
   AUTH_USERNAME: optional(z.string().min(1)),
   AUTH_PASSWORD: optional(z.string().min(8, 'AUTH_PASSWORD must be at least 8 characters')),
+  /** git processes running at once, and how long a call may wait for one. */
+  GIT_MAX_PROCESSES: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .default(2 * availableParallelism()),
+  GIT_QUEUE_TIMEOUT_MS: z.coerce.number().int().min(0).default(10_000),
+  /** Archive downloads running at once, and how long one may take. */
+  ARCHIVE_MAX_CONCURRENT: z.coerce.number().int().min(1).default(2),
+  ARCHIVE_TIMEOUT_MS: z.coerce.number().int().min(1).default(600_000),
   /** Create sample repositories on startup when REPOS_DIR has none. */
   SEED_DEMO: z
     .enum(['true', 'false'])
@@ -29,6 +40,8 @@ export interface Config {
   logLevel: string;
   reposDir: string;
   seedDemo: boolean;
+  git: { maxProcesses: number; queueTimeoutMs: number };
+  archives: { maxConcurrent: number; timeoutMs: number };
   auth: { username: string; password: string } | null;
 }
 
@@ -49,6 +62,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     logLevel: e.LOG_LEVEL,
     reposDir: path.resolve(e.REPOS_DIR),
     seedDemo: e.SEED_DEMO,
+    git: { maxProcesses: e.GIT_MAX_PROCESSES, queueTimeoutMs: e.GIT_QUEUE_TIMEOUT_MS },
+    archives: { maxConcurrent: e.ARCHIVE_MAX_CONCURRENT, timeoutMs: e.ARCHIVE_TIMEOUT_MS },
     auth:
       e.AUTH_USERNAME && e.AUTH_PASSWORD
         ? { username: e.AUTH_USERNAME, password: e.AUTH_PASSWORD }

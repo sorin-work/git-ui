@@ -1,5 +1,6 @@
 import type { RepoLocation } from './repos.js';
-import { git } from './run.js';
+import { git, gitVersion } from './run.js';
+import { isSafeRef } from './validate.js';
 
 export interface Branch {
   name: string;
@@ -24,7 +25,7 @@ export interface Tag {
   subject: string;
 }
 
-/** Branches listed at most; ahead/behind costs one git call per branch. */
+/** Branches listed at most; before git 2.41 ahead/behind costs one git call per branch. */
 export const MAX_BRANCHES = 200;
 
 function records(output: string): string[][] {
@@ -47,27 +48,49 @@ async function aheadBehind(repo: RepoLocation, base: string, branch: string) {
   return { ahead: ahead ?? 0, behind: behind ?? 0 };
 }
 
+/** `%(ahead-behind:...)` in for-each-ref counts every branch in one walk, from git 2.41. */
+export async function supportsAheadBehind(): Promise<boolean> {
+  const [major, minor] = await gitVersion();
+  return major > 2 || (major === 2 && minor >= 41);
+}
+
+const BRANCH_FORMAT =
+  '%(refname:short)%00%(objectname)%00%(committerdate:iso-strict)%00%(subject)%00%(authorname)';
+
 export async function listBranches(
   repo: RepoLocation,
   defaultBranch: string | null,
+  { oneWalk }: { oneWalk?: boolean } = {},
 ): Promise<Branch[]> {
+  // The default branch goes into a format string; only use names that
+  // cannot close or extend the placeholder.
+  const single =
+    defaultBranch !== null &&
+    isSafeRef(defaultBranch) &&
+    (oneWalk ?? (await supportsAheadBehind()));
   const out = await git(repo, [
     'for-each-ref',
     '--sort=-committerdate',
     `--count=${MAX_BRANCHES}`,
-    '--format=%(refname:short)%00%(objectname)%00%(committerdate:iso-strict)%00%(subject)%00%(authorname)',
+    `--format=${BRANCH_FORMAT}${single ? `%00%(ahead-behind:refs/heads/${defaultBranch})` : ''}`,
     'refs/heads',
   ]);
 
   return Promise.all(
-    records(out).map(async ([name = '', sha = '', date = '', subject = '', author = '']) => {
-      const isDefault = name === defaultBranch;
-      const counts =
-        defaultBranch && !isDefault
-          ? await aheadBehind(repo, defaultBranch, name)
-          : { ahead: 0, behind: 0 };
-      return { name, sha, date, subject, author, isDefault, ...counts };
-    }),
+    records(out).map(
+      async ([name = '', sha = '', date = '', subject = '', author = '', counted = '']) => {
+        const isDefault = name === defaultBranch;
+        let counts = { ahead: 0, behind: 0 };
+        if (single) {
+          const [ahead = 0, behind = 0] = counted.split(' ').map(Number);
+          counts = { ahead, behind };
+        } else if (defaultBranch && !isDefault) {
+          // One process per branch, which the git process limit keeps in check.
+          counts = await aheadBehind(repo, defaultBranch, name);
+        }
+        return { name, sha, date, subject, author, isDefault, ...counts };
+      },
+    ),
   );
 }
 

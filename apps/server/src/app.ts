@@ -1,6 +1,7 @@
 import Fastify, { LogController, type FastifyInstance } from 'fastify';
 import type { Config } from './config.js';
 import { RepoRegistry } from './git/repos.js';
+import { configureGit } from './git/run.js';
 import { basicAuth } from './lib/basic-auth.js';
 import { errorHandler } from './lib/error-handler.js';
 import { archiveRoutes } from './routes/archive.js';
@@ -24,6 +25,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
     }),
   });
 
+  configureGit(config.git);
   app.setErrorHandler(errorHandler);
   if (config.auth) app.addHook('onRequest', basicAuth(config.auth.username, config.auth.password));
   app.setNotFoundHandler((request, reply) => {
@@ -46,7 +48,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   await app.register(compareRoutes, { prefix: '/api', registry });
   await app.register(searchRoutes, { prefix: '/api', registry });
   await app.register(insightsRoutes, { prefix: '/api', registry });
-  await app.register(archiveRoutes, { prefix: '/api', registry });
+  await app.register(archiveRoutes, { prefix: '/api', registry, limits: config.archives });
 
   return app;
 }

@@ -1,5 +1,7 @@
 import { execFile, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { availableParallelism } from 'node:os';
 import path from 'node:path';
+import { Semaphore } from '../lib/semaphore.js';
 
 /**
  * Config set on every invocation with `-c`, which beats anything in the
@@ -103,6 +105,20 @@ export function withSafetyFlags(args: readonly string[]): string[] {
 }
 
 const DEFAULT_TIMEOUT_MS = 15_000;
+
+/**
+ * How many git processes may run at once. Without a limit one page can start
+ * hundreds (the repository list runs three per repository, the branches page
+ * one per branch). Calls beyond the limit wait in line, and fail with a
+ * BusyError (503) when they waited too long. Archives have their own limit
+ * (see routes/archive.ts) and are not counted here.
+ */
+export const gitSlots = new Semaphore(2 * availableParallelism(), 10_000);
+
+export function configureGit(options: { maxProcesses: number; queueTimeoutMs: number }) {
+  gitSlots.limit = options.maxProcesses;
+  gitSlots.waitMs = options.queueTimeoutMs;
+}
 const DEFAULT_MAX_BUFFER = 32 * 1024 * 1024;
 
 const NOT_FOUND_PATTERNS = [
@@ -211,34 +227,50 @@ function run<T extends string | Buffer>(
   encoding: 'utf8' | 'buffer',
   options: GitOptions,
 ): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const call = invocation(target, args, options.env);
-    execFile(
-      'git',
-      call.args,
-      {
-        cwd: call.cwd,
-        encoding,
-        timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
-        maxBuffer: options.maxBuffer ?? DEFAULT_MAX_BUFFER,
-        env: call.env,
-        windowsHide: true,
-      },
-      (error, stdout, stderr) => {
-        if (error) {
-          const code = typeof error.code === 'number' ? error.code : null;
-          reject(
-            new GitError(args, code, String(stderr || error.message), {
-              timedOut: error.killed === true && error.signal !== null,
-              outputTooLarge: error.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER',
-            }),
-          );
-          return;
-        }
-        resolve(stdout as T);
-      },
-    );
+  return gitSlots.run(
+    () =>
+      new Promise<T>((resolve, reject) => {
+        const call = invocation(target, args, options.env);
+        execFile(
+          'git',
+          call.args,
+          {
+            cwd: call.cwd,
+            encoding,
+            timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+            maxBuffer: options.maxBuffer ?? DEFAULT_MAX_BUFFER,
+            env: call.env,
+            windowsHide: true,
+          },
+          (error, stdout, stderr) => {
+            if (error) {
+              const code = typeof error.code === 'number' ? error.code : null;
+              reject(
+                new GitError(args, code, String(stderr || error.message), {
+                  timedOut: error.killed === true && error.signal !== null,
+                  outputTooLarge: error.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER',
+                }),
+              );
+              return;
+            }
+            resolve(stdout as T);
+          },
+        );
+      }),
+  );
+}
+
+let version: Promise<[number, number]> | null = null;
+
+/** The installed git's major and minor version, asked once. */
+export function gitVersion(): Promise<[number, number]> {
+  version ??= new Promise((resolve) => {
+    execFile('git', ['--version'], { env: gitEnvironment() }, (error, stdout) => {
+      const match = /(\d+)\.(\d+)/.exec(String(stdout));
+      resolve(error || !match ? [0, 0] : [Number(match[1]), Number(match[2])]);
+    });
   });
+  return version;
 }
 
 /**

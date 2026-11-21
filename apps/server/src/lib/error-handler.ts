@@ -2,6 +2,7 @@ import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
 import { GitError } from '../git/run.js';
 import { HttpError } from './errors.js';
+import { BusyError } from './semaphore.js';
 
 function send(reply: FastifyReply, status: number, code: string, message: string, extra = {}) {
   return reply.status(status).send({ error: { code, message, ...extra } });
@@ -20,6 +21,10 @@ export function errorHandler(
   }
   if (error instanceof HttpError) {
     return send(reply, error.statusCode, error.code, error.message);
+  }
+  if (error instanceof BusyError) {
+    reply.header('Retry-After', '2');
+    return send(reply, 503, 'busy', 'The server is busy. Try again in a moment.');
   }
   if (error instanceof GitError && error.isNotFound) {
     return send(reply, 404, 'not_found', 'No such revision or path in this repository');
