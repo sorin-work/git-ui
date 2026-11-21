@@ -1,3 +1,5 @@
+import { symlink, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { testApp } from '../../test/app.js';
@@ -70,5 +72,24 @@ describe('insights route', () => {
     expect(people.map((p: { name: string }) => p.name)).not.toContain('apop');
     const history = (await app.inject('/api/repos/mapped/commits')).json().items;
     expect(history.at(-1).author.name).toBe('Ana Pop');
+  });
+
+  it('filters history by the mapped author name', async () => {
+    const items = (await app.inject('/api/repos/mapped/commits?author=Ana%20Pop')).json().items;
+    expect(items.map((c: { subject: string }) => c.subject)).toEqual(['one']);
+  });
+
+  it('never reads a .mailmap from the checkout, only from HEAD', async () => {
+    const outside = await tempDir();
+    try {
+      await writeFile(path.join(outside.dir, 'map'), 'Someone Else <author@example.com>\n');
+      const linked = await TestRepo.create(root.dir, 'linkmap');
+      await linked.commit('one', { a: '1' });
+      await symlink(path.join(outside.dir, 'map'), path.join(linked.path, '.mailmap'));
+      const people = (await app.inject('/api/repos/linkmap/insights')).json().contributors;
+      expect(people.map((p: { name: string }) => p.name)).toEqual(['Test Author']);
+    } finally {
+      await outside.cleanup();
+    }
   });
 });
