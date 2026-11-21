@@ -68,6 +68,28 @@ export class LoginThrottle {
 }
 
 /**
+ * The key failed logins are counted under: the address itself for IPv4 and
+ * its /64 for IPv6, since one machine usually has a whole /64 to pick
+ * addresses from. IPv4 written as IPv6 (`::ffff:1.2.3.4`) counts as IPv4.
+ */
+export function clientKey(address: string): string {
+  const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(address);
+  if (mapped) return mapped[1]!;
+  if (!address.includes(':')) return address;
+  const plain = address.split('%')[0]!.toLowerCase();
+  const [head = '', tail = ''] = plain.split('::');
+  const left = head ? head.split(':') : [];
+  const right = tail ? tail.split(':') : [];
+  const groups = plain.includes('::')
+    ? [...left, ...Array<string>(Math.max(0, 8 - left.length - right.length)).fill('0'), ...right]
+    : left;
+  return `${groups
+    .slice(0, 4)
+    .map((g) => g.replace(/^0+(?=.)/, ''))
+    .join(':')}::/64`;
+}
+
+/**
  * An onRequest hook that requires the configured user name and password.
  * `request.ip` is the client address; behind a proxy it is only right with
  * TRUST_PROXY set, or every client shares the proxy's address.
@@ -76,7 +98,8 @@ export function basicAuth(user: string, password: string, throttle = new LoginTh
   return async (request: FastifyRequest, reply: FastifyReply) => {
     if (request.url === '/api/health') return;
 
-    const wait = throttle.retryAfter(request.ip);
+    const client = clientKey(request.ip);
+    const wait = throttle.retryAfter(client);
     if (wait > 0) {
       return reply
         .status(429)
@@ -90,10 +113,10 @@ export function basicAuth(user: string, password: string, throttle = new LoginTh
     const userOk = safeEqual(credentials.user, user);
     const passwordOk = safeEqual(credentials.password, password);
     if (userOk && passwordOk) {
-      throttle.succeed(request.ip);
+      throttle.succeed(client);
       return;
     }
-    if (sent) throttle.fail(request.ip);
+    if (sent) throttle.fail(client);
 
     return reply
       .status(401)

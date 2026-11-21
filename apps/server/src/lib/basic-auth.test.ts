@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { testApp } from '../../test/app.js';
 import { tempDir } from '../../test/repo.js';
 import { loadConfig, parseTrustProxy } from '../config.js';
-import { LoginThrottle, parseBasicAuth } from './basic-auth.js';
+import { clientKey, LoginThrottle, parseBasicAuth } from './basic-auth.js';
 
 const basic = (user: string, password: string) =>
   `Basic ${Buffer.from(`${user}:${password}`).toString('base64')}`;
@@ -176,5 +176,15 @@ describe('login throttling', () => {
       await app.close();
       await open.close();
     }
+  });
+
+  it('counts IPv6 clients by their /64', () => {
+    expect(clientKey('10.0.0.1')).toBe('10.0.0.1');
+    expect(clientKey('::ffff:10.0.0.1')).toBe('10.0.0.1');
+    expect(clientKey('2001:db8:1:2:aaaa::1')).toBe('2001:db8:1:2::/64');
+    expect(clientKey('2001:db8:1:2:bbbb:cccc:dddd:eeee')).toBe('2001:db8:1:2::/64');
+    expect(clientKey('2001:0db8::1')).toBe('2001:db8:0:0::/64');
+    expect(clientKey('fe80::1%eth0')).toBe('fe80:0:0:0::/64');
+    expect(clientKey('::1')).toBe('0:0:0:0::/64');
   });
 });

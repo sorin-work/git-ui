@@ -71,6 +71,8 @@ export async function listCommits(
     `--max-count=${options.limit}`,
     '--regexp-ignore-case',
     '--fixed-strings',
+    // --author matches the mapped names and emails, the ones the page shows.
+    '--use-mailmap',
   ];
   if (options.author) args.push(`--author=${options.author}`);
   if (options.query) args.push(`--grep=${options.query}`);

@@ -1,3 +1,5 @@
+import { requestContext } from './request-context.js';
+
 /**
  * Roughly how much memory a value holds: two bytes per string character,
  * eight per number or boolean, a little per key and object, and the bytes
@@ -123,7 +125,12 @@ export function configureCache(maxMegabytes: number) {
   gitCache.maxBytes = maxMegabytes * 1024 * 1024;
 }
 
-/** Caches `load` under a key made of `parts`; only use for immutable (sha-addressed) data. */
+/**
+ * Caches `load` under a key made of `parts`; only use for immutable
+ * (sha-addressed) data. The load runs outside the request that started it:
+ * other requests may be waiting for the same promise, so one client going
+ * away must not abort git for all of them.
+ */
 export function cached<T>(parts: readonly (string | number)[], load: () => Promise<T>): Promise<T> {
-  return gitCache.get(JSON.stringify(parts), load) as Promise<T>;
+  return gitCache.get(JSON.stringify(parts), () => requestContext.exit(load)) as Promise<T>;
 }

@@ -6,6 +6,12 @@ import { BusyError } from './semaphore.js';
 
 const timedOutRequests = new WeakSet<object>();
 
+/** An error from an AbortSignal (client gone, or a sibling call failed). */
+export function isAbort(error: unknown): boolean {
+  const e = error as { name?: string; code?: string } | null;
+  return e?.name === 'AbortError' || e?.code === 'ABORT_ERR';
+}
+
 /**
  * Marks a request as stopped by its own time limit. A stream destroyed by a
  * timer does not always reach the error handler with the error it was
@@ -31,6 +37,12 @@ export function errorHandler(
   request: FastifyRequest,
   reply: FastifyReply,
 ) {
+  // The client went away, or the request was stopped after a sibling call
+  // failed: nothing went wrong on our side, and nobody reads the answer.
+  if (isAbort(error)) {
+    request.log.info({ reason: error.message }, 'request aborted');
+    return send(reply, 503, 'aborted', 'The request was stopped');
+  }
   if (error instanceof ZodError) {
     return send(reply, 400, 'validation_error', 'Invalid request', {
       issues: error.issues.map((issue) => ({ path: issue.path.join('.'), message: issue.message })),

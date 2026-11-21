@@ -90,12 +90,16 @@ All git access goes through `src/git/run.ts`:
   attribute files. Includes only add config, which is pinned where it
   matters, so all they reveal is whether a file exists.
   `core.attributesFile` is pinned to `/dev/null`.
-- git runs with `GIT_DIR` set to the checked git directory and `GIT_WORK_TREE`
-  to the repository folder. There is no discovery, so a repository that
+- git runs with `GIT_DIR` set to the checked git directory and
+  `GIT_WORK_TREE` (and its working directory) set to an empty folder of the
+  server's own (`emptyWorkTree`). There is no discovery, so a repository that
   disappears between the listing and the call is an error rather than
-  whatever repository sits further up, and `core.worktree` in a repository's
-  config cannot point git at a folder elsewhere. Bare repositories keep
-  reading `.mailmap` from `HEAD`.
+  whatever repository sits further up, `core.worktree` in a repository's
+  config cannot point git at a folder elsewhere, and no file of a checkout
+  is ever read: nothing git-ui runs needs a work tree. `.mailmap` comes from
+  `HEAD` for every repository (`mailmap.blob`), so a checked-out `.mailmap`
+  that is a symlink out of `REPOS_DIR` (git before 2.32 follows it) is never
+  opened.
 - `safe.directory` is set to the repository being read, for that call only.
   Repositories mounted into a container usually belong to a different user,
   and git would otherwise refuse to open them ("dubious ownership").
@@ -109,7 +113,10 @@ All git access goes through `src/git/run.ts`:
   an `onRequest` hook) that `run()` picks up: it aborts when the client goes
   away or the request fails, so the request's queued git calls leave the
   queue and running ones are killed, including the other calls of a page
-  that runs several at once. Downloads have their own
+  that runs several at once. Cached loads run outside the request
+  (`requestContext.exit`), because other requests may be waiting for the
+  same result. An abort is logged at info level and answered 503
+  `aborted`. Downloads have their own
   limit (`ARCHIVE_MAX_CONCURRENT`) and time limit (`ARCHIVE_TIMEOUT_MS`), and
   are stopped, with git, when the client goes away. The branches page counts
   ahead and behind for every branch in one `for-each-ref` walk
@@ -148,8 +155,15 @@ Output formats are chosen to be unambiguous rather than readable:
 
 Names in history, commits, blame, the latest commit per file and the
 contributors list all go through `.mailmap` (`%aN`/`%aE` in formats), so one
-person shows up under one name everywhere. Clones read `.mailmap` from their
-working tree, bare repositories from `HEAD`.
+person shows up under one name everywhere, and the `author` filter matches
+the mapped names (`--use-mailmap`, `log.mailmap=true`). `.mailmap` is read
+from `HEAD`.
+
+The activity chart reads one year back from the tip's commit date with
+`--max-age`, which stops the walk at the first commit older than that. When
+commit dates are out of order (a skewed clock, rebased history), commits
+behind such an older one are not counted, so the chart can undercount; the
+contributors list walks everything and is exact.
 
 Each parser lives next to the command that feeds it in `src/git/` and has unit
 tests with tricky input (quotes, tabs and newlines in names, no newline at end
@@ -176,15 +190,18 @@ Every API response gets `X-Content-Type-Options: nosniff`, and with a login
 `Cache-Control: private` unless the route set its own. Basic auth
 (`src/lib/basic-auth.ts`) counts failed logins per client address in memory
 (`LoginThrottle`): ten within five minutes and the address gets 429 until
-the window passes, without its passwords being checked. The address is
+the window passes, without its passwords being checked. IPv6 clients are
+counted by their /64. The address is
 `request.ip`, which follows `X-Forwarded-For` only as far as `TRUST_PROXY`
 allows.
 
 The nginx in front of the web app adds a Content-Security-Policy
 (`apps/web/security-headers.conf`): scripts only from the app itself (the
-theme is set by `public/theme.js` instead of an inline script), styles from
-the app plus inline style attributes, images from the app, `data:` and any
-https site (README images), no frames, no plugins, no forms. It also sends
+theme is set by `public/theme.js` instead of an inline script), styles only
+from the app's stylesheet (Vue's `:style` bindings go through the CSSOM,
+which the CSP allows, and markdown loses `<style>` and `style=` in
+DOMPurify), images from the app, `data:` and any https site (README images),
+no frames, no plugins, no forms. nginx's own 5xx pages get the same headers. It also sends
 `Referrer-Policy: same-origin`, so links in a README do not tell other sites
 which repository and branch someone was reading, plus `nosniff`,
 `X-Frame-Options` and a Permissions-Policy that turns everything off. The

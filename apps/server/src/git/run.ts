@@ -1,5 +1,6 @@
 import { execFile, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
-import { availableParallelism } from 'node:os';
+import { existsSync, mkdtempSync } from 'node:fs';
+import { availableParallelism, tmpdir } from 'node:os';
 import path from 'node:path';
 import { requestContext } from '../lib/request-context.js';
 import { Semaphore } from '../lib/semaphore.js';
@@ -41,6 +42,8 @@ export const PINNED_CONFIG: readonly (readonly [string, string])[] = [
   ['i18n.logOutputEncoding', 'UTF-8'],
   ['log.follow', 'false'],
   ['log.showRoot', 'true'],
+  // Names in log output and --author matching go through .mailmap.
+  ['log.mailmap', 'true'],
 
   // Files outside the repository that config could point at. (blame's
   // ignoreRevsFile is a list that `-c` cannot clear; see NO_PROGRAM_FLAGS.)
@@ -186,6 +189,16 @@ export interface GitTarget {
   bare: boolean;
 }
 
+let workTreePath: string | null = null;
+
+/** An empty folder of our own, used as the work tree of every repository. */
+export function emptyWorkTree(): string {
+  if (workTreePath === null || !existsSync(workTreePath)) {
+    workTreePath = mkdtempSync(path.join(tmpdir(), 'git-ui-empty-'));
+  }
+  return workTreePath;
+}
+
 /** Full argument list, working directory and environment for one git call. */
 export function invocation(
   target: string | GitTarget,
@@ -203,24 +216,29 @@ export function invocation(
       env: gitEnvironment({ GIT_CEILING_DIRECTORIES: path.dirname(target), ...env }),
     };
   }
+  const workTree = emptyWorkTree();
   return {
-    cwd: target.path,
+    cwd: workTree,
     args: [
       ...BASE_ARGS,
       '-c',
       `safe.directory=${target.path}`,
       '-c',
       `safe.directory=${target.gitDir}`,
-      // The work tree is pinned to the repository folder below, so a bare
-      // repository would read .mailmap from its own folder; keep reading it
-      // from HEAD as git does for bare repositories.
-      ...(target.bare ? ['-c', 'mailmap.blob=HEAD:.mailmap'] : []),
+      // .mailmap comes from HEAD for every repository. The work tree is an
+      // empty folder (below), so a clone's checked-out .mailmap, which git
+      // before 2.32 follows even when it is a symlink out of REPOS_DIR, is
+      // never read.
+      '-c',
+      'mailmap.blob=HEAD:.mailmap',
       ...withSafetyFlags(args),
     ],
     // An explicit git directory means no discovery: git cannot end up in a
     // repository further up if this one disappears, and `core.worktree` in
-    // the repository's config cannot point at a folder elsewhere.
-    env: gitEnvironment({ GIT_DIR: target.gitDir, GIT_WORK_TREE: target.path, ...env }),
+    // the repository's config cannot point at a folder elsewhere. Nothing
+    // git-ui runs needs a work tree, so it gets an empty one: no file a
+    // checkout contains can be read through it.
+    env: gitEnvironment({ GIT_DIR: target.gitDir, GIT_WORK_TREE: workTree, ...env }),
   };
 }
 
@@ -248,6 +266,11 @@ function run<T extends string | Buffer>(
             signal,
           },
           (error, stdout, stderr) => {
+            // Stopped through the request's signal: not git's failure.
+            if (error?.name === 'AbortError') {
+              reject(error);
+              return;
+            }
             if (error) {
               const code = typeof error.code === 'number' ? error.code : null;
               reject(

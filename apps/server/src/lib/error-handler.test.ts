@@ -24,6 +24,7 @@ describe('errorHandler', () => {
     [new GitError(['show'], 128, 'fatal: something else'), 500, 'internal_error'],
     [new Error('secret details'), 500, 'internal_error'],
     [new BusyError(), 503, 'busy'],
+    [Object.assign(new Error('gone'), { name: 'AbortError' }), 503, 'aborted'],
   ])('maps %s to %i', async (error, status, code) => {
     const res = await appThatThrows(error).inject('/boom');
     expect(res.statusCode).toBe(status);

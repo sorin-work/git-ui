@@ -710,12 +710,14 @@ its time limit before the first byte answers 504.
 `request.ip`: ten in five minutes and that address gets 429 with
 `Retry-After` until the window passes, without its passwords being checked;
 requests without credentials do not count, a right password clears the
-address, and at most 5,000 addresses are kept. `TRUST_PROXY` (off by default,
+address, IPv6 addresses count by their /64, and at most 5,000 addresses are
+kept. `TRUST_PROXY` (off by default,
 `1` in docker compose) is passed to Fastify, a hop count as a trust function.
 nginx sends a CSP, `Referrer-Policy: same-origin`, `nosniff`,
 `X-Frame-Options: DENY` and a Permissions-Policy from a snippet included in
 each location; the inline theme script moved to `public/theme.js` so
-`script-src 'self'` holds. The API adds `nosniff`, and `Cache-Control:
+`script-src 'self'` holds, `style-src` is `'self'` only (markdown loses
+`<style>` and `style=`), and nginx's own 5xx pages carry the headers too. The API adds `nosniff`, and `Cache-Control:
 private` with a login. Differences: `X-Frame-Options` and `object-src 'none'`
 are extra. I did not add `nginx -t` to the image build, because nginx
 resolves the `server` upstream when it checks the config and the build has
@@ -732,10 +734,13 @@ walk there, and finds the newest time with a loop (`newest`). The insights
 route is cached per commit. History, commit pages, the latest commit per
 file and the repository list use `%aN`/`%aE`/`%cN`/`%cE`, so `.mailmap`
 applies everywhere, as it already did for `shortlog` and blame.
-Differences: `.mailmap` still comes from the working tree for clones and
-from `HEAD` for bare repositories (item 2 pinned that); I did not switch to
-the commit being shown, because that means a different `mailmap.blob` per
-call and cache entries that depend on it. A commit dated after the tip
+After review, the `author` filter matches mapped names (`--use-mailmap`,
+`log.mailmap=true`), and every repository reads `.mailmap` from `HEAD`: the
+work tree of every git call is now an empty folder of the server's own, so a
+clone's checked-out `.mailmap` (a symlink out of `REPOS_DIR` is followed by
+git before 2.32) is never read. Differences: `.mailmap` comes from `HEAD`,
+not from the commit being shown, because that means a different
+`mailmap.blob` per call and cache entries that depend on it. A commit dated after the tip
 (clock skew) still moves the year, but commits older than the tip's year
 that come later in the walk are no longer counted. The test with 150,000
 commits became a unit test of `newest` with 500,000 numbers.
