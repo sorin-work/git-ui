@@ -11,6 +11,10 @@ interface Waiter {
   timer: NodeJS.Timeout;
 }
 
+function abortError(signal: AbortSignal): Error {
+  return signal.reason instanceof Error ? signal.reason : new Error('Aborted');
+}
+
 /**
  * Limits how many things run at once. `acquire` waits (first come, first
  * served) for a free slot and resolves with a function that gives it back;
@@ -30,31 +34,39 @@ export class Semaphore {
     return { running: this.running, waiting: this.waiting.length };
   }
 
-  acquire(): Promise<() => void> {
+  /** With a `signal`, a caller that gives up leaves the queue at once. */
+  acquire(signal?: AbortSignal): Promise<() => void> {
+    if (signal?.aborted) return Promise.reject(abortError(signal));
     if (this.running < this.limit) {
       this.running += 1;
       return Promise.resolve(this.releaser());
     }
     return new Promise((resolve, reject) => {
+      const leave = (error: Error) => {
+        clearTimeout(waiter.timer);
+        signal?.removeEventListener('abort', onAbort);
+        const index = this.waiting.indexOf(waiter);
+        if (index !== -1) this.waiting.splice(index, 1);
+        reject(error);
+      };
+      const onAbort = () => leave(abortError(signal!));
       const waiter: Waiter = {
         grant: () => {
           clearTimeout(waiter.timer);
+          signal?.removeEventListener('abort', onAbort);
           this.running += 1;
           resolve(this.releaser());
         },
-        timer: setTimeout(() => {
-          const index = this.waiting.indexOf(waiter);
-          if (index !== -1) this.waiting.splice(index, 1);
-          reject(new BusyError());
-        }, this.waitMs),
+        timer: setTimeout(() => leave(new BusyError()), this.waitMs),
       };
+      signal?.addEventListener('abort', onAbort, { once: true });
       this.waiting.push(waiter);
     });
   }
 
   /** Runs `task` in a slot and gives the slot back however it ends. */
-  async run<T>(task: () => Promise<T>): Promise<T> {
-    const release = await this.acquire();
+  async run<T>(task: () => Promise<T>, signal?: AbortSignal): Promise<T> {
+    const release = await this.acquire(signal);
     try {
       return await task();
     } finally {

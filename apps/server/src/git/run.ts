@@ -1,6 +1,7 @@
 import { execFile, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { availableParallelism } from 'node:os';
 import path from 'node:path';
+import { requestContext } from '../lib/request-context.js';
 import { Semaphore } from '../lib/semaphore.js';
 
 /**
@@ -169,6 +170,8 @@ export interface GitOptions {
   maxBuffer?: number;
   /** Extra environment variables, e.g. commit dates. */
   env?: Record<string, string>;
+  /** Stops waiting for a slot, or kills git. Defaults to the request's. */
+  signal?: AbortSignal;
 }
 
 /**
@@ -227,6 +230,7 @@ function run<T extends string | Buffer>(
   encoding: 'utf8' | 'buffer',
   options: GitOptions,
 ): Promise<T> {
+  const signal = options.signal ?? requestContext.getStore()?.signal;
   return gitSlots.run(
     () =>
       new Promise<T>((resolve, reject) => {
@@ -241,6 +245,7 @@ function run<T extends string | Buffer>(
             maxBuffer: options.maxBuffer ?? DEFAULT_MAX_BUFFER,
             env: call.env,
             windowsHide: true,
+            signal,
           },
           (error, stdout, stderr) => {
             if (error) {
@@ -257,6 +262,7 @@ function run<T extends string | Buffer>(
           },
         );
       }),
+    signal,
   );
 }
 

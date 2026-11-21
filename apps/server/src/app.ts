@@ -2,6 +2,7 @@ import Fastify, { LogController, type FastifyInstance } from 'fastify';
 import type { Config } from './config.js';
 import { RepoRegistry } from './git/repos.js';
 import { configureGit } from './git/run.js';
+import { requestContext } from './lib/request-context.js';
 import { basicAuth } from './lib/basic-auth.js';
 import { errorHandler } from './lib/error-handler.js';
 import { archiveRoutes } from './routes/archive.js';
@@ -27,6 +28,24 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   });
 
   configureGit(config.git);
+
+  // Each request gets an AbortSignal that git calls pick up (see
+  // lib/request-context.ts). It aborts when the client goes away before the
+  // answer is complete, and when the request failed, so the other git calls
+  // of a page that runs several at once stop with it.
+  const controllers = new WeakMap<object, AbortController>();
+  app.addHook('onRequest', (request, reply, done) => {
+    const controller = new AbortController();
+    controllers.set(request, controller);
+    reply.raw.once('close', () => {
+      if (!reply.raw.writableFinished) controller.abort(new Error('The client went away'));
+    });
+    requestContext.run({ signal: controller.signal }, done);
+  });
+  app.addHook('onError', async (request) => {
+    controllers.get(request)?.abort(new Error('The request failed'));
+  });
+
   app.setErrorHandler(errorHandler);
   if (config.auth) app.addHook('onRequest', basicAuth(config.auth.username, config.auth.password));
   // JSON is never to be sniffed into something else, and with a login no
@@ -55,7 +74,11 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   await app.register(compareRoutes, { prefix: '/api', registry });
   await app.register(searchRoutes, { prefix: '/api', registry });
   await app.register(insightsRoutes, { prefix: '/api', registry });
-  await app.register(archiveRoutes, { prefix: '/api', registry, limits: config.archives });
+  await app.register(archiveRoutes, {
+    prefix: '/api',
+    registry,
+    limits: { ...config.archives, queueTimeoutMs: config.git.queueTimeoutMs },
+  });
 
   return app;
 }
