@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Added
+
+- Limits on git work: at most `GIT_MAX_PROCESSES` git processes at once
+  (requests that wait too long get 503 `busy`), at most
+  `ARCHIVE_MAX_CONCURRENT` downloads, each stopped after
+  `ARCHIVE_TIMEOUT_MS` or when the client goes away
+- The branches page counts ahead and behind in one git call on git 2.41 and
+  later
+
 ### Changed
 
 - A ref is looked up as a full sha, a branch, a tag, then an abbreviated sha.

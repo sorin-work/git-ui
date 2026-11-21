@@ -52,7 +52,7 @@ still open), and the README, the docs and the CHANGELOG (under an
 | 1   | Repositories cannot make git run programs   | Shipped | security    | M    | -          |
 | 2   | Repositories stay inside REPOS_DIR          | Shipped | security    | M    | -          |
 | 3   | Paths and refs that mean one thing          | Shipped | security    | S    | -          |
-| 4   | Bounded git work                            | Next    | ops         | M    | -          |
+| 4   | Bounded git work                            | Shipped | ops         | M    | -          |
 | 5   | Login throttling and security headers       | Next    | security    | S    | -          |
 | 6   | Insights for long histories                 | Later   | correctness | S    | -          |
 | 7   | A cache bounded by size                     | Later   | performance | S    | -          |
@@ -88,52 +88,6 @@ still open), and the README, the docs and the CHANGELOG (under an
 | 37  | Login through a reverse proxy               | Maybe   | auth        | S    | 5          |
 
 ## Next
-
-### 4. Bounded git work
-
-Every git call is limited to 15 seconds and 32 MB, but nothing limits how many
-run at once, and the one streaming call has no limits at all.
-
-- The repository list runs three git processes per repository
-  (`summarize` in `server/git/summary.ts`). With 200 repositories one page
-  load starts 600 processes at the same moment.
-- The branches page starts one `rev-list` per branch, up to `MAX_BRANCHES`
-  (200), all in parallel (`listBranches` in `server/git/refs.ts`).
-- Archives go through `gitStream`, which has no timeout, keeps running when
-  the browser gives up, and collects stderr without a limit. Five people
-  downloading a large repository and closing the tab leave five `git archive`
-  processes compressing for nobody.
-
-Design:
-
-- A small semaphore in `server/lib/` (no dependency), used by `run()` and
-  `gitStream()`. `GIT_MAX_PROCESSES` sets the limit; the default is twice the
-  number of CPUs. A call that waits longer than a few seconds for a slot fails
-  with a new `GitError` reason and the error handler answers 503 with
-  `code: busy` and `Retry-After`.
-- Archives: a separate, smaller limit (`ARCHIVE_MAX_CONCURRENT`, default 2),
-  a timeout of their own (`ARCHIVE_TIMEOUT_MS`, default ten minutes), the
-  child killed when the response closes early, and stderr capped at a few KB.
-  The troubleshooting note "downloads are not limited" changes.
-- Ahead and behind: `git for-each-ref --format=%(ahead-behind:<default>)`
-  does all branches in one process, from git 2.41. Use it when git is new
-  enough (item 29 gives the version) and otherwise keep `rev-list`, now under
-  the semaphore.
-- The `/repos` list: keep the per-repository calls but run them under the
-  semaphore; item 8 makes them cheaper.
-- Tricky: a semaphore slot must be released on every path out: success,
-  failure, timeout, a stream that errors and a stream the client abandons.
-  Tests for each.
-- Tricky: the semaphore makes queueing visible. A single request that needs
-  many processes (the repository list) can fill it and make a quick file view
-  wait behind it. Two queues (one for list-style fan out) are possible but I
-  would start with one and look at the numbers from item 28.
-- Undecided: rate limits per client. The semaphore protects the machine, not
-  fairness. I would leave rate limits out.
-- Tests: unit tests for the semaphore (order, release on rejection, wait
-  timeout); `server/git/run.test.ts`: a stream destroyed early kills git; the
-  503 shape in `server/lib/error-handler.test.ts`; `server/git/refs` tests
-  get the same numbers with both ahead/behind paths.
 
 ### 5. Login throttling and security headers
 
@@ -795,3 +749,22 @@ does not show "tag v1" yet; it gets `kind` but only strips `refs/tags/` from
 the label. No runtime check that every request value reaches git as a sha
 or after `--`: with lookups in one place and the sha guard, I did not find
 a way to write one that would not just repeat the call sites.
+
+### 4. Bounded git work
+
+Every buffered git call runs under a semaphore (`server/lib/semaphore.ts`,
+`gitSlots` in `server/git/run.ts`): `GIT_MAX_PROCESSES` at once, twice the
+CPUs by default, and a call that waited `GIT_QUEUE_TIMEOUT_MS` (10 seconds)
+gets a `BusyError`, answered as 503 `busy` with `Retry-After`. Downloads
+have their own semaphore (`ARCHIVE_MAX_CONCURRENT`, 2, waiting at most 2
+seconds), a time limit (`ARCHIVE_TIMEOUT_MS`, ten minutes) and are destroyed,
+which kills `cat-file`, when the response closes early. Branches count ahead
+and behind with one `for-each-ref --format=%(ahead-behind:...)` from git
+2.41 (detected once with `git --version`), and with one `rev-list` per
+branch, under the semaphore, before that. Differences: item 1 had already
+replaced `gitStream` and `git archive`, so the stderr cap is the 4 KB one
+in `BlobReader`, and the `cat-file` processes of a download are counted by
+the download limit, not by `gitSlots`, so a slow download cannot hold git
+slots for minutes. One queue for everything, as planned; whether list-style
+pages need their own waits for numbers from item 28. No per-client rate
+limits.

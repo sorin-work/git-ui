@@ -101,6 +101,15 @@ All git access goes through `src/git/run.ts`:
   and git would otherwise refuse to open them ("dubious ownership").
 - Commands time out after 15 seconds and may print at most 32 MB. Both
   failures become `GitError`s that the error handler turns into 504 and 413.
+- At most `GIT_MAX_PROCESSES` git processes run at once (`gitSlots`, a
+  semaphore in `src/lib/semaphore.ts`); the rest wait in line, and a call
+  that waited `GIT_QUEUE_TIMEOUT_MS` fails with a `BusyError`, which the
+  error handler turns into 503 with `Retry-After`. Downloads have their own
+  limit (`ARCHIVE_MAX_CONCURRENT`) and time limit (`ARCHIVE_TIMEOUT_MS`), and
+  are stopped, with git, when the client goes away. The branches page counts
+  ahead and behind for every branch in one `for-each-ref` walk
+  (`%(ahead-behind:...)`) when git is 2.41 or newer, and with one `rev-list`
+  per branch before that.
 
 Refs and paths from the query string are validated before they reach git
 (`src/git/validate.ts`). Refs may only use letters, digits and `._/@+-`, and

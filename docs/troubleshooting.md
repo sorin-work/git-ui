@@ -49,11 +49,22 @@ To start over with fresh demo data, remove the volume:
 
 ## "git took too long to answer" (504)
 
-git commands are stopped after 15 seconds (downloads are not limited). On very large repositories
+git commands are stopped after 15 seconds, and downloads after
+`ARCHIVE_TIMEOUT_MS` (ten minutes by default). On very large repositories
 this can happen for blame of a long file with deep history, a search across
 the whole tree, or a compare between distant refs. Compare closer refs, open
 the file's history instead of its blame, or pass `path` to the search API to
 search a single folder.
+
+## "The server is busy" (503)
+
+git-ui runs at most `GIT_MAX_PROCESSES` git processes at once (twice the
+number of CPUs by default) and at most `ARCHIVE_MAX_CONCURRENT` downloads
+(2). A request that waits longer than `GIT_QUEUE_TIMEOUT_MS` (10 seconds)
+for a free git process, or 2 seconds for a download slot, gets a 503 with
+`Retry-After`. On a big machine, or when many people use it, raise the
+limits; on a small one, a few heavy pages at once (the repository list of
+hundreds of repositories, branches without git 2.41) are the usual cause.
 
 ## "The result is too large to display" (413)
 

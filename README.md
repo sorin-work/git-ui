@@ -77,15 +77,19 @@ repositories in `REPOS_DIR` if you want something to click through.
 
 The server reads these environment variables (or `apps/server/.env`):
 
-| Variable        | Default   | Description                                                           |
-| --------------- | --------- | --------------------------------------------------------------------- |
-| `REPOS_DIR`     | `./repos` | Folder whose subdirectories are the repositories to serve             |
-| `PORT`          | `4100`    | API port                                                              |
-| `HOST`          | `0.0.0.0` | Interface to listen on                                                |
-| `LOG_LEVEL`     | `info`    | `fatal`, `error`, `warn`, `info`, `debug`, `trace` or `silent`        |
-| `SEED_DEMO`     | `false`   | Create demo repositories on start when `REPOS_DIR` has none           |
-| `AUTH_USERNAME` |           | With `AUTH_PASSWORD`, require HTTP basic auth (not for `/api/health`) |
-| `AUTH_PASSWORD` |           | At least 8 characters; set both or neither                            |
+| Variable                 | Default        | Description                                                           |
+| ------------------------ | -------------- | --------------------------------------------------------------------- |
+| `REPOS_DIR`              | `./repos`      | Folder whose subdirectories are the repositories to serve             |
+| `PORT`                   | `4100`         | API port                                                              |
+| `HOST`                   | `0.0.0.0`      | Interface to listen on                                                |
+| `LOG_LEVEL`              | `info`         | `fatal`, `error`, `warn`, `info`, `debug`, `trace` or `silent`        |
+| `SEED_DEMO`              | `false`        | Create demo repositories on start when `REPOS_DIR` has none           |
+| `AUTH_USERNAME`          |                | With `AUTH_PASSWORD`, require HTTP basic auth (not for `/api/health`) |
+| `AUTH_PASSWORD`          |                | At least 8 characters; set both or neither                            |
+| `GIT_MAX_PROCESSES`      | twice the CPUs | git processes running at once; more wait in line                      |
+| `GIT_QUEUE_TIMEOUT_MS`   | `10000`        | How long a request waits for a git process before a 503               |
+| `ARCHIVE_MAX_CONCURRENT` | `2`            | zip and tar.gz downloads running at once                              |
+| `ARCHIVE_TIMEOUT_MS`     | `600000`       | A download still running after this is stopped                        |
 
 Docker compose adds `REPOS_PATH` (host folder mounted as `REPOS_DIR`, a named
 volume when unset) and `WEB_PORT`, and defaults `SEED_DEMO` to `true`.

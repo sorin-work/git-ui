@@ -23,16 +23,17 @@ in the API changes a repository.
 - Dates are ISO 8601 strings as git prints them (with the author's offset).
 - Errors look like `{ "error": { "code": "not_found", "message": "…" } }`:
 
-  | Status | `code`             | When                                                    |
-  | ------ | ------------------ | ------------------------------------------------------- |
-  | 400    | `validation_error` | A query parameter is missing or invalid                 |
-  | 400    | `bad_request`      | Unsafe ref or path, or a folder where a file is needed  |
-  | 401    | `unauthorized`     | Basic auth is enabled and credentials are missing       |
-  | 404    | `not_found`        | Unknown repository, ref, file or folder                 |
-  | 409    | `ambiguous`        | An abbreviated sha matches more than one commit         |
-  | 422    | `unsafe_tree`      | An archive of this tree would unpack outside its folder |
-  | 413    | `too_large`        | git's output is larger than the server buffers          |
-  | 504    | `timeout`          | git took longer than 15 seconds                         |
+  | Status | `code`             | When                                                         |
+  | ------ | ------------------ | ------------------------------------------------------------ |
+  | 400    | `validation_error` | A query parameter is missing or invalid                      |
+  | 400    | `bad_request`      | Unsafe ref or path, or a folder where a file is needed       |
+  | 401    | `unauthorized`     | Basic auth is enabled and credentials are missing            |
+  | 404    | `not_found`        | Unknown repository, ref, file or folder                      |
+  | 409    | `ambiguous`        | An abbreviated sha matches more than one commit              |
+  | 422    | `unsafe_tree`      | An archive of this tree would unpack outside its folder      |
+  | 413    | `too_large`        | git's output is larger than the server buffers               |
+  | 503    | `busy`             | Too much git work at once; retry after `Retry-After` seconds |
+  | 504    | `timeout`          | git took longer than 15 seconds                              |
 
 ## Endpoints
 
