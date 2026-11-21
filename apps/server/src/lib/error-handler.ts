@@ -16,6 +16,12 @@ export function markTimedOut(request: FastifyRequest) {
 }
 
 function send(reply: FastifyReply, status: number, code: string, message: string, extra = {}) {
+  // A route that failed after setting up a download (an archive whose
+  // stream broke before the first byte) has set Content-Type and
+  // Content-Disposition for the file. The error is JSON, and with the file's
+  // type Fastify would refuse to serialize it and answer a bare 500.
+  reply.removeHeader('Content-Disposition');
+  reply.header('Content-Type', 'application/json; charset=utf-8');
   return reply.status(status).send({ error: { code, message, ...extra } });
 }
 

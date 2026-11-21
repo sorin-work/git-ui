@@ -42,4 +42,18 @@ describe('errorHandler', () => {
     const res = await appThatThrows(new BusyError()).inject('/boom');
     expect(res.headers['retry-after']).toBe('2');
   });
+
+  it('answers JSON even when the route had set up a file download', async () => {
+    const app = Fastify();
+    app.setErrorHandler(errorHandler);
+    app.get('/download', async (_request, reply) => {
+      reply.header('Content-Type', 'application/gzip');
+      reply.header('Content-Disposition', 'attachment; filename="x.tar.gz"');
+      throw new GitError(['archive'], null, '', { timedOut: true });
+    });
+    const res = await app.inject('/download');
+    expect(res.statusCode).toBe(504);
+    expect(res.headers['content-type']).toMatch(/^application\/json/);
+    expect(res.headers['content-disposition']).toBeUndefined();
+  });
 });
