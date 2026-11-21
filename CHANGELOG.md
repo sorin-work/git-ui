@@ -15,7 +15,8 @@
   download that fails halfway is cut off instead of ending as a valid but
   incomplete archive
 - A repository is left out when its git data is outside `REPOS_DIR` (a `.git`
-  file, `commondir`, alternates or linked `objects` and `refs`), and git runs
+  file, `commondir`, alternates, or a link anywhere under `refs`, `logs` or
+  `objects`), and git runs
   with an explicit git directory, so it never answers from a repository
   further up or from a `core.worktree` elsewhere
 

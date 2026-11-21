@@ -50,7 +50,10 @@ WEB_PORT=8090
 ```
 
 The server container runs as uid 1000 and only needs read access to that
-folder.
+folder. Anyone who can write to it can publish repositories, so it must only
+be writable by people who may read whatever the server can read: git-ui
+leaves out repositories whose git data points outside the folder, but that
+check is defence in depth, not a boundary.
 
 ## Running locally
 

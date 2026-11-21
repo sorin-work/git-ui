@@ -794,9 +794,13 @@ config, which only reveals whether it exists.
 
 `detectRepo` now returns the git directory (following `gitdir:` in a `.git`
 file), and `escapeReason` in `server/git/repos.ts` refuses a repository unless
-that directory, its `commondir`, every alternate (recursively, five levels as
-git does) and the `HEAD`, `packed-refs`, `refs`, `objects` and loose object
-folders resolve inside `REPOS_DIR`. Refused repositories are logged once with
+that directory, its `commondir`, every alternate (recursively, five levels,
+relative entries against the real objects folder as git does), every entry
+under `refs/`, `logs/` and `objects/`, and `HEAD`, `config`, `index`,
+`packed-refs`, `shallow` and `info/grafts` resolve inside `REPOS_DIR`.
+Dangling links are refused, and so is a repository with more than 100,000
+entries to walk (or 3 seconds of walking), with a reason that says to run
+`git gc`. Refused repositories are logged once with
 the reason. git runs with `GIT_DIR` and `GIT_WORK_TREE` set, so there is no
 discovery. Differences: `GIT_WORK_TREE` was not in the plan; I added it
 because `core.worktree` in a repository's config made `shortlog` read a
@@ -808,5 +812,6 @@ ignored, as git does, and quoted alternate entries are refused. No
 `ALLOW_EXTERNAL_GIT_DIRS` opt-in. Still open: I could not test in CI whether
 git checks ownership of an explicit `GIT_DIR`, so `safe.directory` is passed
 for both the folder and the git directory; and the check and the git call
-are not atomic, so `REPOS_DIR` itself must stay writable only by people
-trusted to publish repositories.
+are not atomic, so the check is defence in depth, not a boundary, and the
+README says `REPOS_DIR` must only be writable by people who may read what
+the server can read.
