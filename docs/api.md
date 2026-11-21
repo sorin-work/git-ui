@@ -14,14 +14,15 @@ in the API changes a repository.
 - Dates are ISO 8601 strings as git prints them (with the author's offset).
 - Errors look like `{ "error": { "code": "not_found", "message": "…" } }`:
 
-  | Status | `code`             | When                                                   |
-  | ------ | ------------------ | ------------------------------------------------------ |
-  | 400    | `validation_error` | A query parameter is missing or invalid                |
-  | 400    | `bad_request`      | Unsafe ref or path, or a folder where a file is needed |
-  | 401    | `unauthorized`     | Basic auth is enabled and credentials are missing      |
-  | 404    | `not_found`        | Unknown repository, ref, file or folder                |
-  | 413    | `too_large`        | git's output is larger than the server buffers         |
-  | 504    | `timeout`          | git took longer than 15 seconds                        |
+  | Status | `code`             | When                                                    |
+  | ------ | ------------------ | ------------------------------------------------------- |
+  | 400    | `validation_error` | A query parameter is missing or invalid                 |
+  | 400    | `bad_request`      | Unsafe ref or path, or a folder where a file is needed  |
+  | 401    | `unauthorized`     | Basic auth is enabled and credentials are missing       |
+  | 404    | `not_found`        | Unknown repository, ref, file or folder                 |
+  | 422    | `unsafe_tree`      | An archive of this tree would unpack outside its folder |
+  | 413    | `too_large`        | git's output is larger than the server buffers          |
+  | 504    | `timeout`          | git took longer than 15 seconds                         |
 
 ## Endpoints
 
@@ -75,8 +76,13 @@ files, with at most 20 matches per file and 300 in total.
 
 **Archives** hold the files exactly as stored in git, with their modes and
 symlinks, under a `<repo>-<ref>/` folder. The server builds them itself, so
-`export-ignore` and `export-subst` attributes are not applied. A zip is
-limited to 65,534 entries and about 4 GB (there is no zip64); bigger
-repositories get 413 and should use `tar.gz`. If reading the repository fails
+`export-ignore` and `export-subst` attributes are not applied. Names and
+symlink targets are kept as the bytes git stores. A zip is limited to 65,534
+entries, about 4 GB and files of 100 MB (there is no zip64, and each file is
+compressed in memory); bigger repositories get 413 and should use `tar.gz`,
+which streams. A tree that git itself would refuse to check out gets 422
+before anything is sent: a path with a `..`, `.` or empty component or a
+`.git` folder, the same path twice, anything below a symlink, or a symlink to
+an absolute path or out of the archive. If reading the repository fails
 after the download has started, the connection is closed before the archive
 is complete.
