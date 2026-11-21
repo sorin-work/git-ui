@@ -13,6 +13,8 @@ export interface HostileRepo {
   repo: TestRepo;
   /** Exists once any of the repository's programs ran. */
   marker: string;
+  /** The program that creates it. */
+  program: string;
   /** Whether that happened. */
   ran: () => boolean;
   /** The first two commits, plain. */
@@ -22,10 +24,24 @@ export interface HostileRepo {
   signed: string;
 }
 
+const SIGNATURES = {
+  openpgp: ['-----BEGIN PGP SIGNATURE-----', '-----END PGP SIGNATURE-----'],
+  ssh: ['-----BEGIN SSH SIGNATURE-----', '-----END SSH SIGNATURE-----'],
+  x509: ['-----BEGIN SIGNED MESSAGE-----', '-----END SIGNED MESSAGE-----'],
+} as const;
+
+export interface HostileOptions {
+  /** Which kind of signature the signed commit carries (git picks the program by it). */
+  signature?: keyof typeof SIGNATURES;
+  /** Put the config in a file the repository includes, instead of .git/config. */
+  viaInclude?: boolean;
+  extraConfig?: Record<string, string>;
+}
+
 export async function createHostileRepo(
   parent: string,
   name: string,
-  extraConfig: Record<string, string> = {},
+  { signature = 'openpgp', viaInclude = false, extraConfig = {} }: HostileOptions = {},
 ): Promise<HostileRepo> {
   const marker = path.join(parent, `${name}-program-ran`);
   const program = path.join(parent, `${name}-program.sh`);
@@ -53,10 +69,10 @@ export async function createHostileRepo(
       `parent ${second}`,
       'author Test Author <author@example.com> 1735722000 +0000',
       'committer Test Author <author@example.com> 1735722000 +0000',
-      'gpgsig -----BEGIN PGP SIGNATURE-----',
+      `gpgsig ${SIGNATURES[signature][0]}`,
       ' ',
       ' iQEzBAABCAAdFiEE',
-      ' -----END PGP SIGNATURE-----',
+      ` ${SIGNATURES[signature][1]}`,
       '',
       'signed',
       '',
@@ -68,11 +84,17 @@ export async function createHostileRepo(
   const mailmap = path.join(parent, `${name}-mailmap`);
   await writeFile(mailmap, 'Renamed By Mailmap <author@example.com>\n');
 
+  await writeFile(path.join(parent, `${name}-allowed-signers`), '');
+  const attributes = path.join(parent, `${name}-attributes`);
+  await writeFile(attributes, '* filter=evil diff=evil\n');
+
   const config: Record<string, string> = {
     'log.showSignature': 'true',
     'gpg.program': program,
     'gpg.ssh.program': program,
     'gpg.x509.program': program,
+    // ssh verification only starts the program when this is set.
+    'gpg.ssh.allowedSignersFile': path.join(parent, `${name}-allowed-signers`),
     'filter.evil.smudge': program,
     'filter.evil.clean': program,
     'filter.evil.process': program,
@@ -88,6 +110,7 @@ export async function createHostileRepo(
     'blame.ignoreRevsFile': path.join(parent, 'does-not-exist'),
     'diff.orderFile': path.join(parent, 'does-not-exist'),
     'mailmap.file': mailmap,
+    'core.attributesFile': attributes,
     'color.ui': 'always',
     'color.diff': 'always',
     'color.grep': 'always',
@@ -101,9 +124,11 @@ export async function createHostileRepo(
     'log.follow': 'true',
     ...extraConfig,
   };
+  const include = path.join(parent, `${name}-included.config`);
   for (const [key, value] of Object.entries(config)) {
-    await repo.run(['config', key, value]);
+    await repo.run(viaInclude ? ['config', '-f', include, key, value] : ['config', key, value]);
   }
+  if (viaInclude) await repo.run(['config', 'include.path', include]);
 
-  return { repo, marker, ran: () => existsSync(marker), first, second, signed };
+  return { repo, marker, program, ran: () => existsSync(marker), first, second, signed };
 }
