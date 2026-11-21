@@ -47,100 +47,47 @@ still open), and the README, the docs and the CHANGELOG (under an
 
 ## Overview
 
-| #   | Item                                        | Group | Area        | Size | Depends on |
-| --- | ------------------------------------------- | ----- | ----------- | ---- | ---------- |
-| 1   | Repositories cannot make git run programs   | Next  | security    | M    | -          |
-| 2   | Repositories stay inside REPOS_DIR          | Next  | security    | M    | -          |
-| 3   | Paths and refs that mean one thing          | Next  | security    | S    | -          |
-| 4   | Bounded git work                            | Next  | ops         | M    | -          |
-| 5   | Login throttling and security headers       | Next  | security    | S    | -          |
-| 6   | Insights for long histories                 | Later | correctness | S    | -          |
-| 7   | A cache bounded by size                     | Later | performance | S    | -          |
-| 8   | A faster repository list                    | Later | performance | M    | -          |
-| 9   | Choosing which repositories are shown       | Later | repos       | S    | -          |
-| 10  | Repositories in nested folders              | Later | repos       | M    | 2, 8       |
-| 11  | Every legal branch and tag name             | Later | refs        | M    | 3          |
-| 12  | Large commits and comparisons               | Later | diffs       | M    | 3          |
-| 13  | Ignoring whitespace and expanding context   | Later | diffs       | M    | -          |
-| 14  | Word-level changes in diffs                 | Later | diffs       | S    | -          |
-| 15  | Patch and diff downloads                    | Later | diffs       | S    | -          |
-| 16  | Permanent links                             | Later | web         | S    | -          |
-| 17  | Regular expression search                   | Later | search      | S    | 3, 4       |
-| 18  | File history with diffs                     | Later | history     | M    | -          |
-| 19  | Blame: earlier versions and ignored commits | Later | history     | M    | -          |
-| 20  | Tag pages and releases                      | Later | refs        | S    | -          |
-| 21  | Git LFS pointer files                       | Later | files       | S    | -          |
-| 22  | Submodule links                             | Later | files       | S    | -          |
-| 23  | Markdown fixes                              | Later | web         | S    | -          |
-| 24  | Clone URLs                                  | Later | repos       | S    | -          |
-| 25  | Atom feeds                                  | Later | api         | S    | -          |
-| 26  | Serving under a sub-path                    | Later | ops         | M    | -          |
-| 27  | Accessibility pass                          | Later | ui          | M    | -          |
-| 28  | Metrics and slow git calls in the log       | Later | ops         | S    | -          |
-| 29  | Supported git versions and upgrades         | Later | ops         | S    | -          |
-| 30  | A tighter docker setup                      | Later | ops         | S    | -          |
-| 31  | Page tests for the web app                  | Later | tests       | M    | -          |
-| 32  | Commit graph                                | Maybe | history     | L    | -          |
-| 33  | Search across all repositories              | Maybe | search      | M    | 4          |
-| 34  | Verified signatures                         | Maybe | history     | L    | 1          |
-| 35  | Notebooks and CSV files                     | Maybe | files       | M    | -          |
-| 36  | Several users and per-repository access     | Maybe | auth        | L    | 9          |
-| 37  | Login through a reverse proxy               | Maybe | auth        | S    | 5          |
+| #   | Item                                        | Group   | Area        | Size | Depends on |
+| --- | ------------------------------------------- | ------- | ----------- | ---- | ---------- |
+| 1   | Repositories cannot make git run programs   | Next    | security    | M    | -          |
+| 2   | Repositories stay inside REPOS_DIR          | Shipped | security    | M    | -          |
+| 3   | Paths and refs that mean one thing          | Next    | security    | S    | -          |
+| 4   | Bounded git work                            | Next    | ops         | M    | -          |
+| 5   | Login throttling and security headers       | Next    | security    | S    | -          |
+| 6   | Insights for long histories                 | Later   | correctness | S    | -          |
+| 7   | A cache bounded by size                     | Later   | performance | S    | -          |
+| 8   | A faster repository list                    | Later   | performance | M    | -          |
+| 9   | Choosing which repositories are shown       | Later   | repos       | S    | -          |
+| 10  | Repositories in nested folders              | Later   | repos       | M    | 2, 8       |
+| 11  | Every legal branch and tag name             | Later   | refs        | M    | 3          |
+| 12  | Large commits and comparisons               | Later   | diffs       | M    | 3          |
+| 13  | Ignoring whitespace and expanding context   | Later   | diffs       | M    | -          |
+| 14  | Word-level changes in diffs                 | Later   | diffs       | S    | -          |
+| 15  | Patch and diff downloads                    | Later   | diffs       | S    | -          |
+| 16  | Permanent links                             | Later   | web         | S    | -          |
+| 17  | Regular expression search                   | Later   | search      | S    | 3, 4       |
+| 18  | File history with diffs                     | Later   | history     | M    | -          |
+| 19  | Blame: earlier versions and ignored commits | Later   | history     | M    | -          |
+| 20  | Tag pages and releases                      | Later   | refs        | S    | -          |
+| 21  | Git LFS pointer files                       | Later   | files       | S    | -          |
+| 22  | Submodule links                             | Later   | files       | S    | -          |
+| 23  | Markdown fixes                              | Later   | web         | S    | -          |
+| 24  | Clone URLs                                  | Later   | repos       | S    | -          |
+| 25  | Atom feeds                                  | Later   | api         | S    | -          |
+| 26  | Serving under a sub-path                    | Later   | ops         | M    | -          |
+| 27  | Accessibility pass                          | Later   | ui          | M    | -          |
+| 28  | Metrics and slow git calls in the log       | Later   | ops         | S    | -          |
+| 29  | Supported git versions and upgrades         | Later   | ops         | S    | -          |
+| 30  | A tighter docker setup                      | Later   | ops         | S    | -          |
+| 31  | Page tests for the web app                  | Later   | tests       | M    | -          |
+| 32  | Commit graph                                | Maybe   | history     | L    | -          |
+| 33  | Search across all repositories              | Maybe   | search      | M    | 4          |
+| 34  | Verified signatures                         | Maybe   | history     | L    | 1          |
+| 35  | Notebooks and CSV files                     | Maybe   | files       | M    | -          |
+| 36  | Several users and per-repository access     | Maybe   | auth        | L    | 9          |
+| 37  | Login through a reverse proxy               | Maybe   | auth        | S    | 5          |
 
 ## Next
-
-### 2. Repositories stay inside REPOS_DIR
-
-`RepoRegistry` follows symlinks only when they resolve inside `REPOS_DIR`
-(`isInside` in `server/git/repos.ts`). There are other ways for a directory
-inside `REPOS_DIR` to make git read a repository somewhere else on the
-machine, and none of them are checked:
-
-- a `.git` file (`gitdir: /home/someone/secret/.git`). `detectRepo` accepts
-  any `.git` file, because worktrees and submodules use them;
-- `commondir` inside a git directory, which linked worktrees use to point at
-  the main repository;
-- `objects/info/alternates`, which adds another repository's objects. With it
-  every blob of that repository can be read through `/raw` by its sha;
-- `objects`, `refs` or `HEAD` in a bare repository being symlinks themselves.
-
-There is also discovery. git runs with `cwd` set to the repository and looks
-upwards for a `.git` when the folder stops being a repository between the
-listing and the call (deleted, half-copied). If `REPOS_DIR` sits inside a
-checkout, git then answers from that outer repository.
-
-- `detectRepo` returns the real git directory, not only `bare`. For a `.git`
-  file, read and parse it (`gitdir: <path>`, relative to the file). Then
-  follow `commondir` and every line of `objects/info/alternates`, recursively
-  and with a depth limit, and `realpath` each one. All of them must be inside
-  `realpath(REPOS_DIR)`. Otherwise the repository is left out and a warning is
-  logged once with the reason.
-- `objects`, `refs` and `HEAD` symlinks get the same check.
-- Run git against the checked directory explicitly: `RepoLocation` gets
-  `gitDir`, and `invocation()` sets `GIT_DIR` to it (and no work tree; nothing
-  we run needs one). That ends discovery for good. Set
-  `GIT_CEILING_DIRECTORIES` to the parent of `REPOS_DIR` as well, for the
-  seed scripts and anything that still runs with a `cwd`.
-- Tricky: `safe.directory`. git checks ownership of a discovered directory but
-  not of an explicit `GIT_DIR`, I believe. Check this with a repository owned
-  by another uid in a test (or document why it cannot be tested in CI), and
-  keep the `-c safe.directory` only if it is still needed.
-- Tricky: worktrees whose main repository is also in `REPOS_DIR` are fine and
-  must keep working. A test with a main clone and a linked worktree next to
-  each other.
-- Tricky: the check and the git call are not atomic. Someone who can write to
-  `REPOS_DIR` can swap a link after the check. That person can already put any
-  repository there, so I would only make sure the path we run is the resolved
-  one and say the folder itself must be trusted.
-- `docs/troubleshooting.md` gets an entry for repositories skipped this way.
-- Undecided: an opt-in (`ALLOW_EXTERNAL_GIT_DIRS=true`) for people who keep
-  worktrees elsewhere on purpose. I lean towards no until someone asks.
-- Tests: `server/git/repos.test.ts`: a `.git` file pointing outside, a
-  `commondir` pointing outside, alternates outside (and alternates inside,
-  which must work), a symlinked `objects`; a routes test that `raw` cannot
-  read an outside blob by sha; a test that removes a repository's `.git`
-  after listing and checks the next call fails instead of answering from a
-  parent repository.
 
 ### 3. Paths and refs that mean one thing
 
@@ -833,3 +780,24 @@ list `-c` cannot clear, so blame gets `--no-ignore-revs-file` instead;
 command uses them (item 15 has to pin the latter). Still open: `include.path`
 can make git read any file the server can read as config, which only reveals
 whether it exists.
+
+### 2. Repositories stay inside REPOS_DIR
+
+`detectRepo` now returns the git directory (following `gitdir:` in a `.git`
+file), and `escapeReason` in `server/git/repos.ts` refuses a repository unless
+that directory, its `commondir`, every alternate (recursively, five levels as
+git does) and the `HEAD`, `packed-refs`, `refs`, `objects` and loose object
+folders resolve inside `REPOS_DIR`. Refused repositories are logged once with
+the reason. git runs with `GIT_DIR` and `GIT_WORK_TREE` set, so there is no
+discovery. Differences: `GIT_WORK_TREE` was not in the plan; I added it
+because `core.worktree` in a repository's config made `shortlog` read a
+`.mailmap` from any folder, and with it bare repositories need
+`mailmap.blob=HEAD:.mailmap` pinned to keep their old behaviour. Every call
+that names revisions now ends them with `--`, because the work tree of a bare
+repository has a file called `HEAD`. Alternates that do not exist are
+ignored, as git does, and quoted alternate entries are refused. No
+`ALLOW_EXTERNAL_GIT_DIRS` opt-in. Still open: I could not test in CI whether
+git checks ownership of an explicit `GIT_DIR`, so `safe.directory` is passed
+for both the folder and the git directory; and the check and the git call
+are not atomic, so `REPOS_DIR` itself must stay writable only by people
+trusted to publish repositories.
