@@ -54,7 +54,7 @@ export async function searchCode(
 
   let out: string;
   try {
-    out = await git(repo.path, args);
+    out = await git(repo, args);
   } catch (err) {
     // git grep exits with 1 when nothing matches (and 128 on real errors).
     if (err instanceof GitError && err.exitCode === 1) {

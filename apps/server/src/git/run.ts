@@ -1,4 +1,5 @@
 import { execFile, spawn } from 'node:child_process';
+import path from 'node:path';
 import type { Readable } from 'node:stream';
 
 /**
@@ -151,34 +152,69 @@ export interface GitOptions {
   env?: Record<string, string>;
 }
 
-/** Full argument list and environment for one git call. */
+/**
+ * Where git runs. A plain path is for creating repositories (tests, demo
+ * data); everything that reads a served repository passes its location.
+ */
+export interface GitTarget {
+  /** The repository folder: the work tree of a clone, or the bare repository. */
+  path: string;
+  /** The checked git directory (see RepoRegistry). */
+  gitDir: string;
+  bare: boolean;
+}
+
+/** Full argument list, working directory and environment for one git call. */
 export function invocation(
-  repoPath: string,
+  target: string | GitTarget,
   args: readonly string[],
   env: Record<string, string> = {},
 ) {
+  if (typeof target === 'string') {
+    return {
+      cwd: target,
+      // Repositories mounted from the host are often owned by another user, and
+      // git refuses to open those ("dubious ownership"). Trust exactly the
+      // repository being read, not every directory.
+      args: [...BASE_ARGS, '-c', `safe.directory=${target}`, ...withSafetyFlags(args)],
+      // Never fall back to a repository further up.
+      env: gitEnvironment({ GIT_CEILING_DIRECTORIES: path.dirname(target), ...env }),
+    };
+  }
   return {
-    // Repositories mounted from the host are often owned by another user, and
-    // git refuses to open those ("dubious ownership"). Trust exactly the
-    // repository being read, not every directory.
-    args: [...BASE_ARGS, '-c', `safe.directory=${repoPath}`, ...withSafetyFlags(args)],
-    env: gitEnvironment(env),
+    cwd: target.path,
+    args: [
+      ...BASE_ARGS,
+      '-c',
+      `safe.directory=${target.path}`,
+      '-c',
+      `safe.directory=${target.gitDir}`,
+      // The work tree is pinned to the repository folder below, so a bare
+      // repository would read .mailmap from its own folder; keep reading it
+      // from HEAD as git does for bare repositories.
+      ...(target.bare ? ['-c', 'mailmap.blob=HEAD:.mailmap'] : []),
+      ...withSafetyFlags(args),
+    ],
+    // An explicit git directory means no discovery: git cannot end up in a
+    // repository further up if this one disappears, and `core.worktree` in
+    // the repository's config cannot point at a folder elsewhere.
+    env: gitEnvironment({ GIT_DIR: target.gitDir, GIT_WORK_TREE: target.path, ...env }),
   };
 }
 
 function run<T extends string | Buffer>(
-  repoPath: string,
+  target: string | GitTarget,
   args: readonly string[],
   encoding: 'utf8' | 'buffer',
   options: GitOptions,
 ): Promise<T> {
   return new Promise((resolve, reject) => {
-    const call = invocation(repoPath, args, options.env);
+    const call = invocation(target, args, options.env);
     execFile(
       'git',
       call.args,
       {
-        cwd: repoPath,
+        cwd: call.cwd,
         encoding,
         timeout: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
         maxBuffer: options.maxBuffer ?? DEFAULT_MAX_BUFFER,
@@ -203,26 +239,30 @@ function run<T extends string | Buffer>(
 }
 
 /**
- * Runs git in `repoPath` without a shell. Arguments are passed as an array,
+ * Runs git for `target` without a shell. Arguments are passed as an array,
  * so nothing a user types can be interpreted by a shell; callers still have
  * to make sure refs and paths can't be read as options.
  */
-export function git(repoPath: string, args: readonly string[], options: GitOptions = {}) {
-  return run<string>(repoPath, args, 'utf8', options);
+export function git(target: string | GitTarget, args: readonly string[], options: GitOptions = {}) {
+  return run<string>(target, args, 'utf8', options);
 }
 
 /** Like `git()` but returns raw bytes, for file contents. */
-export function gitBuffer(repoPath: string, args: readonly string[], options: GitOptions = {}) {
-  return run<Buffer>(repoPath, args, 'buffer', options);
+export function gitBuffer(
+  target: string | GitTarget,
+  args: readonly string[],
+  options: GitOptions = {},
+) {
+  return run<Buffer>(target, args, 'buffer', options);
 }
 
 /**
  * Streams git's stdout instead of buffering it, for output that can be large
  * (archives). The stream errors with a GitError if git fails.
  */
-export function gitStream(repoPath: string, args: readonly string[]): Readable {
-  const call = invocation(repoPath, args);
-  const child = spawn('git', call.args, { cwd: repoPath, env: call.env, windowsHide: true });
+export function gitStream(target: string | GitTarget, args: readonly string[]): Readable {
+  const call = invocation(target, args);
+  const child = spawn('git', call.args, { cwd: call.cwd, env: call.env, windowsHide: true });
   let stderr = '';
   child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString()));
   child.on('close', (code) => {

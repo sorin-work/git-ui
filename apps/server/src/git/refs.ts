@@ -35,11 +35,12 @@ function records(output: string): string[][] {
 }
 
 async function aheadBehind(repo: RepoLocation, base: string, branch: string) {
-  const out = await git(repo.path, [
+  const out = await git(repo, [
     'rev-list',
     '--left-right',
     '--count',
     `refs/heads/${base}...refs/heads/${branch}`,
+    '--',
   ]);
   const [behind, ahead] = out.trim().split(/\s+/).map(Number);
   return { ahead: ahead ?? 0, behind: behind ?? 0 };
@@ -49,7 +50,7 @@ export async function listBranches(
   repo: RepoLocation,
   defaultBranch: string | null,
 ): Promise<Branch[]> {
-  const out = await git(repo.path, [
+  const out = await git(repo, [
     'for-each-ref',
     '--sort=-committerdate',
     `--count=${MAX_BRANCHES}`,
@@ -70,7 +71,7 @@ export async function listBranches(
 }
 
 export async function listTags(repo: RepoLocation): Promise<Tag[]> {
-  const out = await git(repo.path, [
+  const out = await git(repo, [
     'for-each-ref',
     '--sort=-creatordate',
     '--format=%(refname:short)%00%(objecttype)%00%(objectname)%00%(*objectname)%00%(creatordate:iso-strict)%00%(contents:subject)',

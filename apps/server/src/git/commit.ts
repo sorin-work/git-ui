@@ -27,7 +27,7 @@ const DETAIL_FORMAT = ['%H', '%h', '%P', '%an', '%ae', '%aI', '%cn', '%ce', '%cI
 );
 
 export async function readCommit(repo: RepoLocation, sha: string): Promise<CommitDetail> {
-  const out = await git(repo.path, ['show', '--no-patch', `--format=${DETAIL_FORMAT}`, sha]);
+  const out = await git(repo, ['show', '--no-patch', `--format=${DETAIL_FORMAT}`, sha, '--']);
   const [hash, shortSha, parents, an, ae, ad, cn, ce, cd, subject, body] = out.split('\0');
   return {
     sha: hash ?? sha,
@@ -47,7 +47,7 @@ export async function readCommit(repo: RepoLocation, sha: string): Promise<Commi
  * "combined" diff that only shows conflict resolutions (and usually nothing).
  */
 export async function commitDiff(repo: RepoLocation, sha: string): Promise<FileDiff[]> {
-  const out = await git(repo.path, [
+  const out = await git(repo, [
     '-c',
     'core.quotepath=off',
     'show',
@@ -56,6 +56,7 @@ export async function commitDiff(repo: RepoLocation, sha: string): Promise<FileD
     '--patch',
     '--find-renames',
     sha,
+    '--',
   ]);
   return parseDiff(out);
 }

@@ -77,6 +77,6 @@ export function parseBlame(output: string): Blame {
 }
 
 export async function blame(repo: RepoLocation, commit: string, path: string): Promise<Blame> {
-  const out = await git(repo.path, ['blame', '--porcelain', commit, '--', path]);
+  const out = await git(repo, ['blame', '--porcelain', commit, '--', path]);
   return parseBlame(out);
 }

@@ -21,9 +21,7 @@ export interface RepoSummary {
 const PLACEHOLDER_DESCRIPTION = /^Unnamed repository;/;
 
 async function readDescription(repo: RepoLocation): Promise<string | null> {
-  const file = repo.bare
-    ? path.join(repo.path, 'description')
-    : path.join(repo.path, '.git', 'description');
+  const file = path.join(repo.gitDir, 'description');
   try {
     const text = (await readFile(file, 'utf8')).trim();
     return text && !PLACEHOLDER_DESCRIPTION.test(text) ? text : null;
@@ -35,7 +33,7 @@ async function readDescription(repo: RepoLocation): Promise<string | null> {
 /** The branch HEAD points to, or null for a detached HEAD. */
 export async function defaultBranch(repo: RepoLocation): Promise<string | null> {
   try {
-    return (await git(repo.path, ['symbolic-ref', '--quiet', '--short', 'HEAD'])).trim() || null;
+    return (await git(repo, ['symbolic-ref', '--quiet', '--short', 'HEAD'])).trim() || null;
   } catch (err) {
     if (err instanceof GitError) return null;
     throw err;
@@ -45,7 +43,7 @@ export async function defaultBranch(repo: RepoLocation): Promise<string | null> 
 /** The latest commit on HEAD, or null for a repository without commits. */
 export async function lastCommit(repo: RepoLocation): Promise<CommitBrief | null> {
   try {
-    const out = await git(repo.path, ['log', '-1', '--format=%H%x00%s%x00%an%x00%aI', 'HEAD']);
+    const out = await git(repo, ['log', '-1', '--format=%H%x00%s%x00%an%x00%aI', 'HEAD', '--']);
     const [sha, subject, author, date] = out.trimEnd().split('\0');
     if (!sha || subject === undefined || author === undefined || !date) return null;
     return { sha, subject, author, date };
@@ -71,12 +69,7 @@ export async function summarize(repo: RepoLocation): Promise<RepoSummary> {
 }
 
 export async function refCounts(repo: RepoLocation): Promise<{ branches: number; tags: number }> {
-  const out = await git(repo.path, [
-    'for-each-ref',
-    '--format=%(refname)',
-    'refs/heads',
-    'refs/tags',
-  ]);
+  const out = await git(repo, ['for-each-ref', '--format=%(refname)', 'refs/heads', 'refs/tags']);
   const refs = out.split('\n').filter(Boolean);
   return {
     branches: refs.filter((r) => r.startsWith('refs/heads/')).length,

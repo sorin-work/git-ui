@@ -51,7 +51,7 @@ describe('git runner', () => {
     await git(dir, ['-c', 'user.name=T', '-c', 'user.email=t@e.st', 'commit', '-qm', 'one']);
     await writeFile(path.join(dir, 'a.txt'), 'two\n');
     await git(dir, ['-c', 'user.name=T', '-c', 'user.email=t@e.st', 'commit', '-qam', 'two']);
-    const repo = { name: 'x', path: dir, bare: false };
+    const repo = { name: 'x', path: dir, gitDir: path.join(dir, '.git'), bare: false };
 
     await commitDiff(repo, 'HEAD');
     await blame(repo, 'HEAD', 'a.txt');

@@ -92,7 +92,7 @@ export async function repositoryLanguages(
   repo: RepoLocation,
   commit: string,
 ): Promise<LanguageShare[]> {
-  const out = await git(repo.path, ['ls-tree', '-r', '-z', '--long', commit]);
+  const out = await git(repo, ['ls-tree', '-r', '-z', '--long', commit]);
   const files = out
     .split('\0')
     .map((record) => /^\d+ blob [0-9a-f]+ +(\d+)\t(.*)$/s.exec(record))

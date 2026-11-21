@@ -34,7 +34,9 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
 
   app.get('/api/health', async () => ({ status: 'ok' }));
 
-  const registry = new RepoRegistry(config.reposDir);
+  const registry = new RepoRegistry(config.reposDir, ({ dir, reason }) =>
+    app.log.warn({ dir, reason }, 'repository left out'),
+  );
   await app.register(repoRoutes, { prefix: '/api', registry });
   await app.register(treeRoutes, { prefix: '/api', registry });
   await app.register(blobRoutes, { prefix: '/api', registry });

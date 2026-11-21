@@ -27,22 +27,23 @@ export interface Comparison {
  * their merge base, so changes made on `base` meanwhile are not shown.
  */
 export async function compare(repo: RepoLocation, base: string, head: string): Promise<Comparison> {
-  const mergeBase = await git(repo.path, ['merge-base', base, head])
+  const mergeBase = await git(repo, ['merge-base', base, head])
     .then((out) => out.trim() || null)
     .catch(() => null);
 
   const [counts, log, patch] = await Promise.all([
-    git(repo.path, ['rev-list', '--left-right', '--count', `${base}...${head}`]),
-    git(repo.path, [
+    git(repo, ['rev-list', '--left-right', '--count', `${base}...${head}`, '--']),
+    git(repo, [
       'log',
       '-z',
       '--reverse',
       `--format=${LOG_FORMAT}`,
       `--max-count=${MAX_COMPARE_COMMITS + 1}`,
       `${base}..${head}`,
+      '--',
     ]),
     mergeBase
-      ? git(repo.path, ['-c', 'core.quotepath=off', 'diff', '--find-renames', mergeBase, head])
+      ? git(repo, ['-c', 'core.quotepath=off', 'diff', '--find-renames', mergeBase, head, '--'])
       : Promise.resolve(''),
   ]);
 

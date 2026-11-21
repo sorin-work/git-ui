@@ -18,7 +18,7 @@ export async function resolveCommit(
   const name = ref ?? (await defaultBranch(repo)) ?? 'HEAD';
   if (!isSafeRef(name)) throw badRequest(`Invalid ref "${name}"`);
   try {
-    const out = await git(repo.path, [
+    const out = await git(repo, [
       'rev-parse',
       '--verify',
       '--quiet',
@@ -47,7 +47,7 @@ export async function objectType(
 ): Promise<string | null> {
   if (path === '') return 'tree';
   try {
-    return (await git(repo.path, ['cat-file', '-t', `${commit}:${path}`])).trim();
+    return (await git(repo, ['cat-file', '-t', `${commit}:${path}`])).trim();
   } catch (err) {
     if (err instanceof GitError) return null;
     throw err;

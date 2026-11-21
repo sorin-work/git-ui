@@ -59,7 +59,7 @@ export async function archiveSafetyArgs(
 ): Promise<string[]> {
   let output = '';
   try {
-    output = await git(repo.path, ['config', '--null', '--get-regexp', '^(filter|tar)\\.']);
+    output = await git(repo, ['config', '--null', '--get-regexp', '^(filter|tar)\\.']);
   } catch (err) {
     // Exit code 1: no such keys.
     if (!(err instanceof GitError && err.exitCode === 1)) throw err;
@@ -98,7 +98,7 @@ export async function archiveStream(
     `--prefix=${prefix}/`,
     commit,
   ];
-  const stream = gitStream(repo.path, args);
+  const stream = gitStream(repo, args);
   if (format === 'zip') return stream;
   // pipeline() destroys the gzip stream with git's error if git fails.
   return pipeline(stream, createGzip(), () => {});

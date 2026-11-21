@@ -18,11 +18,11 @@ export function looksBinary(bytes: Buffer): boolean {
 }
 
 export async function blobSize(repo: RepoLocation, commit: string, path: string): Promise<number> {
-  return Number((await git(repo.path, ['cat-file', '-s', `${commit}:${path}`])).trim());
+  return Number((await git(repo, ['cat-file', '-s', `${commit}:${path}`])).trim());
 }
 
 export function readBlobBytes(repo: RepoLocation, commit: string, path: string): Promise<Buffer> {
-  return gitBuffer(repo.path, ['cat-file', 'blob', `${commit}:${path}`]);
+  return gitBuffer(repo, ['cat-file', 'blob', `${commit}:${path}`]);
 }
 
 export async function readBlob(

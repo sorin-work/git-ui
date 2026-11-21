@@ -77,5 +77,5 @@ export async function listCommits(
   args.push(commit, '--');
   if (options.path) args.push(options.path);
 
-  return parseLog(await git(repo.path, args));
+  return parseLog(await git(repo, args));
 }
