@@ -736,12 +736,14 @@ its time limit before the first byte answers 504.
 `request.ip`: ten in five minutes and that address gets 429 with
 `Retry-After` until the window passes, without its passwords being checked;
 requests without credentials do not count, a right password clears the
-address, and at most 5,000 addresses are kept. `TRUST_PROXY` (off by default,
+address, IPv6 addresses count by their /64, and at most 5,000 addresses are
+kept. `TRUST_PROXY` (off by default,
 `1` in docker compose) is passed to Fastify, a hop count as a trust function.
 nginx sends a CSP, `Referrer-Policy: same-origin`, `nosniff`,
 `X-Frame-Options: DENY` and a Permissions-Policy from a snippet included in
 each location; the inline theme script moved to `public/theme.js` so
-`script-src 'self'` holds. The API adds `nosniff`, and `Cache-Control:
+`script-src 'self'` holds, `style-src` is `'self'` only (markdown loses
+`<style>` and `style=`), and nginx's own 5xx pages carry the headers too. The API adds `nosniff`, and `Cache-Control:
 private` with a login. Differences: `X-Frame-Options` and `object-src 'none'`
 are extra. I did not add `nginx -t` to the image build, because nginx
 resolves the `server` upstream when it checks the config and the build has

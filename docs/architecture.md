@@ -109,7 +109,10 @@ All git access goes through `src/git/run.ts`:
   an `onRequest` hook) that `run()` picks up: it aborts when the client goes
   away or the request fails, so the request's queued git calls leave the
   queue and running ones are killed, including the other calls of a page
-  that runs several at once. Downloads have their own
+  that runs several at once. Cached loads run outside the request
+  (`requestContext.exit`), because other requests may be waiting for the
+  same result. An abort is logged at info level and answered 503
+  `aborted`. Downloads have their own
   limit (`ARCHIVE_MAX_CONCURRENT`) and time limit (`ARCHIVE_TIMEOUT_MS`), and
   are stopped, with git, when the client goes away. The branches page counts
   ahead and behind for every branch in one `for-each-ref` walk
@@ -171,15 +174,18 @@ Every API response gets `X-Content-Type-Options: nosniff`, and with a login
 `Cache-Control: private` unless the route set its own. Basic auth
 (`src/lib/basic-auth.ts`) counts failed logins per client address in memory
 (`LoginThrottle`): ten within five minutes and the address gets 429 until
-the window passes, without its passwords being checked. The address is
+the window passes, without its passwords being checked. IPv6 clients are
+counted by their /64. The address is
 `request.ip`, which follows `X-Forwarded-For` only as far as `TRUST_PROXY`
 allows.
 
 The nginx in front of the web app adds a Content-Security-Policy
 (`apps/web/security-headers.conf`): scripts only from the app itself (the
-theme is set by `public/theme.js` instead of an inline script), styles from
-the app plus inline style attributes, images from the app, `data:` and any
-https site (README images), no frames, no plugins, no forms. It also sends
+theme is set by `public/theme.js` instead of an inline script), styles only
+from the app's stylesheet (Vue's `:style` bindings go through the CSSOM,
+which the CSP allows, and markdown loses `<style>` and `style=` in
+DOMPurify), images from the app, `data:` and any https site (README images),
+no frames, no plugins, no forms. nginx's own 5xx pages get the same headers. It also sends
 `Referrer-Policy: same-origin`, so links in a README do not tell other sites
 which repository and branch someone was reading, plus `nosniff`,
 `X-Frame-Options` and a Permissions-Policy that turns everything off. The
