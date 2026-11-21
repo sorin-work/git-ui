@@ -93,13 +93,20 @@ describe('archive route', () => {
   it.each(['tar.gz', 'zip'])('cuts the %s off when git fails halfway', async (format) => {
     const name = `corrupt-${format.replace('.', '')}`;
     const corrupt = await TestRepo.create(root.dir, name);
-    await corrupt.commit('one', { 'a.txt': 'a\n', 'z.bin': randomBytes(200_000) });
+    // a.bin comes first and is big enough that bytes reach the client.
+    await corrupt.commit('one', { 'a.bin': randomBytes(100_000), 'z.bin': randomBytes(200_000) });
     const sha = (await corrupt.run(['rev-parse', 'HEAD:z.bin'])).trim();
     const object = path.join(corrupt.path, '.git/objects', sha.slice(0, 2), sha.slice(2));
     // The header (and so the size ls-tree prints) is fine; the content is not.
     await chmod(object, 0o644);
     await truncate(object, 100_000);
-    await expect(app.inject(`/api/repos/${name}/archive?format=${format}`)).rejects.toThrow();
+    // Either the connection is cut, or (when nothing was sent yet) the answer
+    // is an error. Never a 200 that looks complete.
+    const outcome = await app.inject(`/api/repos/${name}/archive?format=${format}`).then(
+      (res) => res.statusCode,
+      () => 'cut off',
+    );
+    expect([500, 'cut off']).toContain(outcome);
     await rm(corrupt.path, { recursive: true });
   });
 });
