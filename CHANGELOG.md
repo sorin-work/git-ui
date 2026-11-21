@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Security
+
+- A repository's config can no longer make git run a program: signature
+  checks, the gpg programs and the archive filter and compression commands
+  are switched off, and git starts with a clean environment without the
+  host's config
+- Repository config can no longer change git's output (colors, diff prefixes,
+  encodings) and break pages
+- tar.gz downloads are compressed by the server; a zip is refused (409) when
+  the repository redefines the zip format
+
 ## 1.0.0 (2026-11-03)
 
 First release.

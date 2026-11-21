@@ -20,6 +20,7 @@ in the API changes a repository.
   | 400    | `bad_request`      | Unsafe ref or path, or a folder where a file is needed |
   | 401    | `unauthorized`     | Basic auth is enabled and credentials are missing      |
   | 404    | `not_found`        | Unknown repository, ref, file or folder                |
+  | 409    | `unsafe_config`    | The repository's config would make git run a program   |
   | 413    | `too_large`        | git's output is larger than the server buffers         |
   | 504    | `timeout`          | git took longer than 15 seconds                        |
 

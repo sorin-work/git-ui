@@ -24,7 +24,9 @@ apps/
 ```
 
 The server shells out to the `git` binary with argument arrays (never a shell)
-and validates every ref and path it receives. Repositories are the direct
+and validates every ref and path it receives. A repository's own config is
+not trusted either: anything in it that could make git run a program is
+switched off. Repositories are the direct
 subdirectories of `REPOS_DIR`; both bare repositories (`project.git`) and
 regular clones work. [docs/architecture.md](docs/architecture.md) has the
 details.

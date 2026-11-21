@@ -36,11 +36,30 @@ All git access goes through `src/git/run.ts`:
   and `gitStream()` pipes stdout straight into the HTTP response (archives).
 - Arguments are always an array passed to `execFile`/`spawn`; nothing is ever
   interpolated into a shell command.
-- Every call adds `-c` options that switch off things a repository could use
-  to run code or change output: the pager, colors, `core.fsmonitor` and hooks.
-  `show`, `log` and `diff` also get `--no-textconv --no-ext-diff`, and `blame`
-  gets `--no-textconv`, so a repository's `.gitattributes` cannot invoke an
-  external program.
+- A repository's config is input like anything else, so every call pins the
+  settings that could make git run a program or change its output with `-c`
+  options, which beat the repository's own config (`PINNED_CONFIG` in
+  `run.ts`): the pager, hooks, `core.fsmonitor`, signature checks and the gpg
+  programs, colors, diff prefixes, the log encoding, the grep column and the
+  files config could point at outside the repository. `show`, `log` and
+  `diff` also get `--no-textconv --no-ext-diff`, `grep` gets
+  `--no-textconv`, and `blame` gets `--no-textconv --no-ignore-revs-file`, so
+  a repository's `.gitattributes` cannot invoke an external program.
+- git starts with an empty environment plus `PATH`, `TMPDIR` and the
+  variables we set. Nothing like `GIT_DIR` or `GIT_CONFIG_PARAMETERS` from the
+  server's own environment reaches it, `HOME` is not passed, and
+  `GIT_CONFIG_NOSYSTEM`, `GIT_CONFIG_GLOBAL=/dev/null` and `GIT_ATTR_NOSYSTEM`
+  keep the host's config out too. `GIT_NO_REPLACE_OBJECTS` makes a sha always
+  show that commit, and `GIT_OPTIONAL_LOCKS=0` keeps git from writing even an
+  index.
+- Archives (`src/git/archive.ts`) need more. `git archive` runs the filter
+  driver a file's attributes name, and the driver names come from the
+  repository, so the server lists them with `git config --get-regexp` first
+  and blanks each one's commands. Config can also replace the program a
+  format is piped through (`tar.<format>.command`), so git only writes plain
+  tar, which cannot be replaced, and the server gzips it. A repository that
+  redefines `zip`, or a filter whose name cannot be passed to `-c`, gets a 409
+  instead of a download.
 - `safe.directory` is set to the repository being read, for that call only.
   Repositories mounted into a container usually belong to a different user,
   and git would otherwise refuse to open them ("dubious ownership").
