@@ -1,11 +1,11 @@
 import { existsSync } from 'node:fs';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { blame } from './blame.js';
 import { commitDiff } from './commit.js';
-import { git, GitError, gitBuffer, withSafetyFlags } from './run.js';
+import { git, GitError, gitBuffer, invocation, withSafetyFlags } from './run.js';
 
 describe('git runner', () => {
   let dir: string;
@@ -69,7 +69,12 @@ describe('git runner', () => {
       '--no-ext-diff',
       'HEAD',
     ]);
-    expect(withSafetyFlags(['blame', 'HEAD'])).toEqual(['blame', '--no-textconv', 'HEAD']);
+    expect(withSafetyFlags(['blame', 'HEAD'])).toEqual([
+      'blame',
+      '--no-textconv',
+      '--no-ignore-revs-file',
+      'HEAD',
+    ]);
     expect(withSafetyFlags(['ls-tree', 'HEAD'])).toEqual(['ls-tree', 'HEAD']);
   });
 
@@ -89,5 +94,46 @@ describe('git runner', () => {
   it('does not run arguments through a shell', async () => {
     const error = await git(dir, ['rev-parse', '--verify', '$(touch pwned)']).catch((e) => e);
     expect(error).toBeInstanceOf(GitError);
+  });
+});
+
+describe('git environment', () => {
+  let dir: string;
+  const saved = { ...process.env };
+
+  beforeAll(async () => {
+    dir = await mkdtemp(path.join(tmpdir(), 'git-ui-env-'));
+    await git(dir, ['init', '--quiet', '--initial-branch=main']);
+  });
+
+  afterAll(async () => {
+    process.env = saved;
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it('ignores git variables and user config from the server environment', async () => {
+    const home = path.join(dir, 'home');
+    await mkdir(home);
+    await writeFile(path.join(home, '.gitconfig'), '[user]\n\tname = From Home\n');
+    process.env.HOME = home;
+    process.env.GIT_DIR = path.join(dir, 'nowhere');
+    process.env.GIT_CONFIG_PARAMETERS = "'user.email'='from@env'";
+    try {
+      expect((await git(dir, ['rev-parse', '--git-dir'])).trim()).toBe('.git');
+      const error = await git(dir, ['config', '--get-regexp', '^user\\.']).catch((e) => e);
+      expect(error).toBeInstanceOf(GitError);
+      expect(error.exitCode).toBe(1);
+    } finally {
+      process.env = { ...saved };
+    }
+  });
+
+  it('pins config before the caller’s own -c options, so those still win', () => {
+    const { args, env } = invocation(dir, ['-c', 'core.quotepath=off', 'show', 'HEAD']);
+    expect(args[0]).toBe('--no-pager');
+    expect(args).toContain('log.showSignature=false');
+    expect(args.indexOf('core.quotepath=off')).toBeGreaterThan(args.indexOf('color.diff=never'));
+    expect(env.GIT_CONFIG_GLOBAL).toBe('/dev/null');
+    expect(env.HOME).toBeUndefined();
   });
 });

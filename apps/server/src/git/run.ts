@@ -2,32 +2,92 @@ import { execFile, spawn } from 'node:child_process';
 import type { Readable } from 'node:stream';
 
 /**
- * Arguments added to every invocation. Besides keeping the output stable,
- * they switch off config that could make git run programs: the repositories
- * we serve are not necessarily trusted.
+ * Config set on every invocation with `-c`, which beats anything in the
+ * repository's own config. The repositories we serve are not necessarily
+ * trusted, and their config is input like any other: it can name programs
+ * for git to run and change the output our parsers read.
  */
+export const PINNED_CONFIG: readonly (readonly [string, string])[] = [
+  // Programs. Read commands would otherwise run these from a repository's
+  // config: hooks and fsmonitor, gpg for `log.showSignature` and `%G?` (also
+  // inside `export-subst` files in archives).
+  ['core.fsmonitor', 'false'],
+  ['core.hooksPath', '/dev/null'],
+  ['core.pager', 'cat'],
+  ['log.showSignature', 'false'],
+  ['gpg.program', 'false'],
+  ['gpg.ssh.program', 'false'],
+  ['gpg.x509.program', 'false'],
+
+  // Output. Colors, other diff prefixes, an extra grep column or another
+  // encoding would turn what the parsers read into garbage.
+  ['color.ui', 'never'],
+  ['color.diff', 'never'],
+  ['color.grep', 'never'],
+  ['color.branch', 'never'],
+  ['color.showBranch', 'never'],
+  ['color.status', 'never'],
+  ['diff.noprefix', 'false'],
+  ['diff.mnemonicPrefix', 'false'],
+  ['diff.srcPrefix', 'a/'],
+  ['diff.dstPrefix', 'b/'],
+  ['diff.relative', 'false'],
+  ['diff.suppressBlankEmpty', 'false'],
+  ['diff.submodule', 'short'],
+  ['grep.column', 'false'],
+  ['i18n.logOutputEncoding', 'UTF-8'],
+  ['log.follow', 'false'],
+  ['log.showRoot', 'true'],
+
+  // Files outside the repository that config could point at. (blame's
+  // ignoreRevsFile is a list that `-c` cannot clear; see NO_PROGRAM_FLAGS.)
+  ['diff.orderFile', '/dev/null'],
+  ['mailmap.file', '/dev/null'],
+];
+
 const BASE_ARGS = [
   '--no-pager',
-  '-c',
-  'color.ui=never',
-  '-c',
-  'core.pager=cat',
-  '-c',
-  'core.fsmonitor=false',
-  '-c',
-  'core.hooksPath=/dev/null',
+  ...PINNED_CONFIG.flatMap(([key, value]) => ['-c', `${key}=${value}`]),
 ];
+
+/**
+ * The environment git runs with. It starts empty rather than from
+ * `process.env`, so variables such as GIT_DIR, GIT_CONFIG_PARAMETERS or
+ * GIT_EXTERNAL_DIFF set for the server never reach git, and neither does
+ * HOME: the system and user config of the host do not apply either.
+ */
+export function gitEnvironment(extra: Record<string, string> = {}): Record<string, string> {
+  const env: Record<string, string> = {
+    GIT_CONFIG_NOSYSTEM: '1',
+    GIT_CONFIG_GLOBAL: '/dev/null',
+    GIT_ATTR_NOSYSTEM: '1',
+    // refs/replace can make a sha show another commit's content.
+    GIT_NO_REPLACE_OBJECTS: '1',
+    // Never write to the repositories, not even the index of a clone.
+    GIT_OPTIONAL_LOCKS: '0',
+    GIT_TERMINAL_PROMPT: '0',
+    LC_ALL: 'C',
+  };
+  for (const key of ['PATH', 'TMPDIR']) {
+    const value = process.env[key];
+    if (value) env[key] = value;
+  }
+  return { ...env, ...extra };
+}
 
 /**
  * Diff drivers set up in a repository's .gitattributes and config (textconv,
  * external diff) are programs git runs when it shows content. Never let a
- * repository we only want to display run its own programs.
+ * repository we only want to display run its own programs. blame also drops
+ * the ignore-revs files from config: they can name any file on the host,
+ * and a missing one makes every blame fail.
  */
 const NO_PROGRAM_FLAGS: Record<string, string[]> = {
   show: ['--no-textconv', '--no-ext-diff'],
   log: ['--no-textconv', '--no-ext-diff'],
   diff: ['--no-textconv', '--no-ext-diff'],
-  blame: ['--no-textconv'],
+  blame: ['--no-textconv', '--no-ignore-revs-file'],
+  grep: ['--no-textconv'],
 };
 
 /** Inserts NO_PROGRAM_FLAGS right after the subcommand (skipping leading `-c x=y` pairs). */
@@ -92,13 +152,17 @@ export interface GitOptions {
 }
 
 /** Full argument list and environment for one git call. */
-function invocation(repoPath: string, args: readonly string[], env: Record<string, string> = {}) {
+export function invocation(
+  repoPath: string,
+  args: readonly string[],
+  env: Record<string, string> = {},
+) {
   return {
     // Repositories mounted from the host are often owned by another user, and
     // git refuses to open those ("dubious ownership"). Trust exactly the
     // repository being read, not every directory.
     args: [...BASE_ARGS, '-c', `safe.directory=${repoPath}`, ...withSafetyFlags(args)],
-    env: { ...process.env, GIT_TERMINAL_PROMPT: '0', LC_ALL: 'C', ...env },
+    env: gitEnvironment(env),
   };
 }
 
