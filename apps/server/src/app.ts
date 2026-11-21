@@ -17,6 +17,7 @@ import { treeRoutes } from './routes/tree.js';
 
 export async function buildApp(config: Config): Promise<FastifyInstance> {
   const app = Fastify({
+    trustProxy: config.trustProxy,
     logger: config.logLevel === 'silent' ? false : { level: config.logLevel },
     logController: new LogController({
       // The docker healthcheck polls /api/health every 15 seconds; logging it
@@ -28,6 +29,12 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   configureGit(config.git);
   app.setErrorHandler(errorHandler);
   if (config.auth) app.addHook('onRequest', basicAuth(config.auth.username, config.auth.password));
+  // JSON is never to be sniffed into something else, and with a login no
+  // shared cache may keep an answer meant for the logged-in user.
+  app.addHook('onSend', async (_request, reply) => {
+    reply.header('X-Content-Type-Options', 'nosniff');
+    if (config.auth && !reply.hasHeader('Cache-Control')) reply.header('Cache-Control', 'private');
+  });
   app.setNotFoundHandler((request, reply) => {
     reply.status(404).send({
       error: { code: 'not_found', message: `Route ${request.method} ${request.url} not found` },

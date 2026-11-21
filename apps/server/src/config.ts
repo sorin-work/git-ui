@@ -26,6 +26,11 @@ const envSchema = z.object({
   /** Archive downloads running at once, and how long one may take. */
   ARCHIVE_MAX_CONCURRENT: z.coerce.number().int().min(1).default(2),
   ARCHIVE_TIMEOUT_MS: z.coerce.number().int().min(1).default(600_000),
+  /**
+   * Whose X-Forwarded-For to believe: empty (nobody), "true" (anyone), a
+   * number of proxy hops, or a comma-separated list of proxy addresses.
+   */
+  TRUST_PROXY: z.string().default(''),
   /** Create sample repositories on startup when REPOS_DIR has none. */
   SEED_DEMO: z
     .enum(['true', 'false'])
@@ -43,6 +48,22 @@ export interface Config {
   git: { maxProcesses: number; queueTimeoutMs: number };
   archives: { maxConcurrent: number; timeoutMs: number };
   auth: { username: string; password: string } | null;
+  trustProxy: TrustProxy;
+}
+
+/** Fastify's `trustProxy`: all, none, listed addresses, or the first n hops. */
+export type TrustProxy = boolean | string | ((address: string, hop: number) => boolean);
+
+/** TRUST_PROXY as Fastify's `trustProxy` option. */
+export function parseTrustProxy(value: string): TrustProxy {
+  const trimmed = value.trim();
+  if (trimmed === '' || trimmed === 'false') return false;
+  if (trimmed === 'true') return true;
+  if (/^\d+$/.test(trimmed)) {
+    const hops = Number(trimmed);
+    return (_address, hop) => hop < hops;
+  }
+  return trimmed;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -62,6 +83,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     logLevel: e.LOG_LEVEL,
     reposDir: path.resolve(e.REPOS_DIR),
     seedDemo: e.SEED_DEMO,
+    trustProxy: parseTrustProxy(e.TRUST_PROXY),
     git: { maxProcesses: e.GIT_MAX_PROCESSES, queueTimeoutMs: e.GIT_QUEUE_TIMEOUT_MS },
     archives: { maxConcurrent: e.ARCHIVE_MAX_CONCURRENT, timeoutMs: e.ARCHIVE_TIMEOUT_MS },
     auth:
