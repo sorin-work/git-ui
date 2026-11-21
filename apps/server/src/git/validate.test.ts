@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isSafeRef, isSafeRepoName, isSha, normalizeRepoPath } from './validate.js';
+import { assertFullSha, isSafeRef, isSafeRepoName, isSha, normalizeRepoPath } from './validate.js';
 
 describe('isSafeRef', () => {
   it.each([
@@ -76,5 +76,16 @@ describe('isSafeRepoName', () => {
     expect(isSafeRepoName('..')).toBe(false);
     expect(isSafeRepoName('.hidden')).toBe(false);
     expect(isSafeRepoName('a/b')).toBe(false);
+  });
+});
+
+describe('assertFullSha', () => {
+  it('passes full shas through and refuses anything else', () => {
+    const sha = 'ab'.repeat(20);
+    expect(assertFullSha(sha)).toBe(sha);
+    expect(assertFullSha('c'.repeat(64))).toBe('c'.repeat(64));
+    for (const bad of ['HEAD', '--output=x', sha.slice(0, 39), sha.toUpperCase()]) {
+      expect(() => assertFullSha(bad)).toThrow();
+    }
   });
 });
