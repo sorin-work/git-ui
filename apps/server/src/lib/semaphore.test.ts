@@ -51,4 +51,18 @@ describe('Semaphore', () => {
     release();
     (await slots.acquire())();
   });
+
+  it('lets a waiting caller leave the queue when its signal aborts', async () => {
+    const slots = new Semaphore(1, 10_000);
+    const release = await slots.acquire();
+    const controller = new AbortController();
+    const waiting = slots.acquire(controller.signal);
+    await tick();
+    expect(slots.stats.waiting).toBe(1);
+    controller.abort(new Error('gone'));
+    await expect(waiting).rejects.toThrow('gone');
+    expect(slots.stats).toEqual({ running: 1, waiting: 0 });
+    release();
+    await expect(slots.acquire(controller.signal)).rejects.toThrow('gone');
+  });
 });

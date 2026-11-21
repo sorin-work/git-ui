@@ -179,4 +179,18 @@ describe('git process limit', () => {
     expect(major).toBeGreaterThanOrEqual(2);
     expect(minor).toBeGreaterThanOrEqual(0);
   });
+
+  it('kills git when the signal aborts', async () => {
+    configureGit({ maxProcesses: 4, queueTimeoutMs: 1000 });
+    const controller = new AbortController();
+    const started = Date.now();
+    const call = git(dir, ['hash-object', '--stdin'], {
+      timeoutMs: 10_000,
+      signal: controller.signal,
+    });
+    setTimeout(() => controller.abort(), 50);
+    await expect(call).rejects.toThrow();
+    expect(Date.now() - started).toBeLessThan(5_000);
+    expect(gitSlots.stats).toEqual({ running: 0, waiting: 0 });
+  });
 });
