@@ -42,7 +42,8 @@ the git commands that follow.
 All git access goes through `src/git/run.ts`:
 
 - `git()` collects stdout as text, `gitBuffer()` as bytes (images, raw files)
-  and `gitStream()` pipes stdout straight into the HTTP response (archives).
+  and `gitProcess()` gives a process with pipes for `cat-file --batch`
+  (archives).
 - Arguments are always an array passed to `execFile`/`spawn`; nothing is ever
   interpolated into a shell command.
 - A repository's config is input like anything else, so every call pins the
@@ -50,7 +51,8 @@ All git access goes through `src/git/run.ts`:
   options, which beat the repository's own config (`PINNED_CONFIG` in
   `run.ts`): the pager, hooks, `core.fsmonitor`, signature checks and the gpg
   programs, colors, diff prefixes, the log encoding, the grep column and the
-  files config could point at outside the repository. `show`, `log` and
+  files config could point at outside the repository (`core.attributesFile`,
+  `diff.orderFile`, `mailmap.file`). `show`, `log` and
   `diff` also get `--no-textconv --no-ext-diff`, `grep` gets
   `--no-textconv`, and `blame` gets `--no-textconv --no-ignore-revs-file`, so
   a repository's `.gitattributes` cannot invoke an external program.
@@ -61,14 +63,21 @@ All git access goes through `src/git/run.ts`:
   keep the host's config out too. `GIT_NO_REPLACE_OBJECTS` makes a sha always
   show that commit, and `GIT_OPTIONAL_LOCKS=0` keeps git from writing even an
   index.
-- Archives (`src/git/archive.ts`) need more. `git archive` runs the filter
-  driver a file's attributes name, and the driver names come from the
-  repository, so the server lists them with `git config --get-regexp` first
-  and blanks each one's commands. Config can also replace the program a
-  format is piped through (`tar.<format>.command`), so git only writes plain
-  tar, which cannot be replaced, and the server gzips it. A repository that
-  redefines `zip`, or a filter whose name cannot be passed to `-c`, gets a 409
-  instead of a download.
+- Archives are not made by `git archive`, which runs the filter driver a
+  file's attributes name and the compressor `tar.<format>.command` names,
+  both chosen by the repository. `src/git/archive.ts` lists the files with
+  `ls-tree -r -t -z --long`, reads their content with `cat-file --batch`
+  (neither looks at attributes) and writes the tar or zip itself
+  (`src/lib/tar.ts`, `src/lib/zip.ts`), keeping file modes, symlinks and the
+  `<repo>-<ref>/` folder. `export-ignore` and `export-subst` are not applied.
+  The end of the archive is only written after `cat-file` has exited
+  cleanly; if reading fails halfway, the stream errors and the connection is
+  cut, so a broken download never looks complete.
+- Two settings can still make git read files on the host that are not in the
+  repository: `include.path` (and `includeIf`) in a repository's config, and
+  attribute files. Includes only add config, which is pinned where it
+  matters, so all they reveal is whether a file exists.
+  `core.attributesFile` is pinned to `/dev/null`.
 - git runs with `GIT_DIR` set to the checked git directory and `GIT_WORK_TREE`
   to the repository folder. There is no discovery, so a repository that
   disappears between the listing and the call is an error rather than

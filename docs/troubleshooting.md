@@ -79,21 +79,21 @@ content type, and every raw file gets a sandboxing `Content-Security-Policy`,
 so a file committed to a repository can never run script with access to
 git-ui.
 
-## A download fails with "unsafe_config" (409)
+## Downloads include files marked export-ignore
 
-The repository's config would make `git archive` run a program: it replaces
-the zip format (`tar.zip.command`), or it has a filter driver whose name
-contains `=`, which git-ui cannot switch off. A tar.gz still works in the
-first case. Other filters, such as Git LFS, are switched off and their files
-are archived as stored in git.
+git-ui builds zip and tar.gz downloads itself instead of running
+`git archive`, because `git archive` runs programs the repository's config
+chooses (filters and compressors). The price is that `export-ignore` and
+`export-subst` in `.gitattributes` are not applied. Files tracked with Git LFS
+are archived as their pointer files.
 
 ## My git config is ignored
 
 That is deliberate. git-ui runs git without your `HOME`, the system config or
 any `GIT_*` variables, and overrides the repository settings that could start
 a program or change git's output. Aliases, colors, `log.showSignature`, a
-`.mailmap` file named in config or `blame.ignoreRevsFile` have no effect in
-git-ui.
+`.mailmap` file named in config, `core.attributesFile` or
+`blame.ignoreRevsFile` have no effect in git-ui.
 
 ## The browser keeps asking for a password
 

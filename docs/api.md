@@ -20,7 +20,6 @@ in the API changes a repository.
   | 400    | `bad_request`      | Unsafe ref or path, or a folder where a file is needed |
   | 401    | `unauthorized`     | Basic auth is enabled and credentials are missing      |
   | 404    | `not_found`        | Unknown repository, ref, file or folder                |
-  | 409    | `unsafe_config`    | The repository's config would make git run a program   |
   | 413    | `too_large`        | git's output is larger than the server buffers         |
   | 504    | `timeout`          | git took longer than 15 seconds                        |
 
@@ -45,7 +44,7 @@ in the API changes a repository.
 | `/api/repos/:repo/search`       | `q` (≥ 2 chars), `ref`, `path`, `case=1`                 | `{ matches: [{ path, line, text }], truncated }`               |
 | `/api/repos/:repo/insights`     | `ref`                                                    | `{ contributors, activity }`, 52 weeks of commit counts        |
 | `/api/repos/:repo/languages`    | `ref`                                                    | `{ languages: [{ name, color, bytes, percent }] }`             |
-| `/api/repos/:repo/archive`      | `ref`, `format=zip\|tar.gz`                              | A download of the files at that ref                            |
+| `/api/repos/:repo/archive`      | `ref`, `format=zip\|tar.gz`                              | A download of the files at that ref (see below)                |
 
 ### Notes
 
@@ -73,3 +72,11 @@ files, minified files and `node_modules`, `vendor`, `dist`, `build` and
 
 **Search** is a literal (not regex) `git grep` at the given ref, skipping binary
 files, with at most 20 matches per file and 300 in total.
+
+**Archives** hold the files exactly as stored in git, with their modes and
+symlinks, under a `<repo>-<ref>/` folder. The server builds them itself, so
+`export-ignore` and `export-subst` attributes are not applied. A zip is
+limited to 65,534 entries and about 4 GB (there is no zip64); bigger
+repositories get 413 and should use `tar.gz`. If reading the repository fails
+after the download has started, the connection is closed before the archive
+is complete.
