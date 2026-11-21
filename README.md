@@ -96,6 +96,7 @@ a range of lines and `?` lists them all.
 - [docs/architecture.md](docs/architecture.md): how the server and web app work
 - [docs/troubleshooting.md](docs/troubleshooting.md): missing repositories,
   timeouts, permissions
+- [ROADMAP.md](ROADMAP.md): what I might add next
 
 ## Scripts
 
