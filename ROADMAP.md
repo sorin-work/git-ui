@@ -779,9 +779,13 @@ the server can read.
 
 git runs with `GIT_LITERAL_PATHSPECS=1`, so a path in a request is only ever
 that path. `resolveCommit` looks a name up as a full sha, `refs/heads/<name>`,
-`refs/tags/<name>`, then an abbreviated sha of at least 7 characters, accepts
+`refs/tags/<name>`, then an abbreviated sha of at least 7 characters (found
+among objects with `rev-parse --disambiguate`, so a ref of that name never
+wins; a prefix that fits two commits is a 409), accepts
 `refs/heads/x`, `refs/tags/x` and `HEAD`, and nothing else; the API returns
-the `kind` it found. The tags page and the ref selector link a tag as
+the `kind` it found. Branch and tag names and the default branch are read
+in full (`lstrip=2`, `symbolic-ref HEAD`), because git's short names turn
+into `heads/v1` when a branch and a tag share a name. The tags page and the ref selector link a tag as
 `refs/tags/<name>` when a branch has the same name. Every command that names
 a revision puts `--end-of-options` before it. Differences: `blame` and `grep`
 reject `--end-of-options` in git 2.30 and still in 2.43, so they get

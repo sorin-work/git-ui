@@ -20,6 +20,10 @@ describe('paths and refs that mean one thing', () => {
     // A branch whose name looks like the start of another commit's sha.
     await repo.run(['branch', first.slice(0, 8), second]);
     await repo.run(['update-ref', 'refs/stash', first]);
+    // A tag named like the default branch, and a remote ref named like a
+    // prefix of the first commit's sha (git's own lookup would take it).
+    await repo.run(['tag', 'main', first]);
+    await repo.run(['update-ref', `refs/remotes/${first.slice(0, 9)}`, second]);
     app = await testApp(root.dir);
   });
 
@@ -81,5 +85,29 @@ describe('paths and refs that mean one thing', () => {
       const res = await app.inject(`/api/repos/demo/tree?ref=${encodeURIComponent(ref)}`);
       expect(res.statusCode, ref).toBe(404);
     }
+  });
+
+  it('finds the default branch when a tag has the same name', async () => {
+    expect(await json('/api/repos/demo/tree')).toMatchObject({
+      ref: 'main',
+      kind: 'branch',
+      commit: second,
+    });
+  });
+
+  it('lists a branch and a tag that share a name by their plain names', async () => {
+    const { branches } = await json('/api/repos/demo/branches');
+    const v1 = branches.find((b: { name: string }) => b.name === 'v1');
+    expect(v1).toMatchObject({ sha: second, ahead: 0, behind: 0 });
+    expect(branches.map((b: { name: string }) => b.name)).not.toContain('heads/v1');
+    const { tags } = await json('/api/repos/demo/tags');
+    expect(tags.map((t: { name: string }) => t.name).sort()).toEqual(['main', 'v1']);
+  });
+
+  it('looks abbreviated shas up among objects, not refs', async () => {
+    expect(await json(`/api/repos/demo/tree?ref=${first.slice(0, 9)}`)).toMatchObject({
+      kind: 'commit',
+      commit: first,
+    });
   });
 });

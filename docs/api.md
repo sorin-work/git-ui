@@ -7,7 +7,8 @@ in the API changes a repository.
 
 - `:repo` is the repository's directory name without a trailing `.git`.
 - `ref` accepts a branch, tag or commit sha, looked up in this order: a full
-  sha, a branch, a tag, then a sha of at least 7 characters. So `v1` is the
+  sha, a branch, a tag, then a sha of at least 7 characters (looked up among
+  objects only, never as a ref name). So `v1` is the
   branch when a branch and a tag are both called `v1`; `refs/tags/v1` (or
   `refs/heads/v1`) picks one explicitly. Nothing else is accepted: no
   `refs/remotes/…`, `refs/stash`, `@` or `heads/x`. Without `ref` the
@@ -28,6 +29,7 @@ in the API changes a repository.
   | 400    | `bad_request`      | Unsafe ref or path, or a folder where a file is needed  |
   | 401    | `unauthorized`     | Basic auth is enabled and credentials are missing       |
   | 404    | `not_found`        | Unknown repository, ref, file or folder                 |
+  | 409    | `ambiguous`        | An abbreviated sha matches more than one commit         |
   | 422    | `unsafe_tree`      | An archive of this tree would unpack outside its folder |
   | 413    | `too_large`        | git's output is larger than the server buffers          |
   | 504    | `timeout`          | git took longer than 15 seconds                         |

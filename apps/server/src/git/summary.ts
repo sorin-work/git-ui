@@ -30,10 +30,14 @@ async function readDescription(repo: RepoLocation): Promise<string | null> {
   }
 }
 
-/** The branch HEAD points to, or null for a detached HEAD. */
+/**
+ * The branch HEAD points to, or null for a detached HEAD. Not `--short`:
+ * that prints `heads/main` when a tag `main` exists too.
+ */
 export async function defaultBranch(repo: RepoLocation): Promise<string | null> {
   try {
-    return (await git(repo, ['symbolic-ref', '--quiet', '--short', 'HEAD'])).trim() || null;
+    const ref = (await git(repo, ['symbolic-ref', '--quiet', 'HEAD'])).trim();
+    return ref.startsWith('refs/heads/') ? ref.slice('refs/heads/'.length) || null : null;
   } catch (err) {
     if (err instanceof GitError) return null;
     throw err;

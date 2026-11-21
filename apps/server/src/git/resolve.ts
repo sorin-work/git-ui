@@ -1,4 +1,4 @@
-import { badRequest, notFound } from '../lib/errors.js';
+import { badRequest, HttpError, notFound } from '../lib/errors.js';
 import { defaultBranch } from './summary.js';
 import type { RepoLocation } from './repos.js';
 import { git, GitError } from './run.js';
@@ -44,6 +44,33 @@ export function refCandidates(name: string): [string, RefKind][] {
 }
 
 /**
+ * The commit an abbreviated sha names, looked up among objects only: asking
+ * rev-parse for `<hex>^{commit}` would also take a ref called `<hex>` (in
+ * refs/remotes, say), which is the guessing the lookup order is meant to
+ * stop. Throws when the prefix fits more than one commit.
+ */
+async function commitByPrefix(repo: RepoLocation, prefix: string): Promise<string | null> {
+  let objects: string[];
+  try {
+    const out = await git(repo, ['rev-parse', `--disambiguate=${prefix.toLowerCase()}`]);
+    objects = out.split('\n').filter((line) => /^[0-9a-f]{40,64}$/.test(line));
+  } catch (err) {
+    if (err instanceof GitError) return null;
+    throw err;
+  }
+  const commits = new Set<string>();
+  for (const object of objects) {
+    // Full object names are never read as refs; tags peel to their commit.
+    const commit = await verifyCommit(repo, object);
+    if (commit) commits.add(commit);
+  }
+  if (commits.size > 1) {
+    throw new HttpError(409, `Revision "${prefix}" is ambiguous; use more characters`, 'ambiguous');
+  }
+  return [...commits][0] ?? null;
+}
+
+/**
  * Turns a branch, tag or commit name into a full commit sha. Without a ref the
  * repository's default branch is used.
  */
@@ -54,7 +81,13 @@ export async function resolveCommit(
   const name = ref ?? (await defaultBranch(repo)) ?? 'HEAD';
   if (!isSafeRef(name)) throw badRequest(`Invalid ref "${name}"`);
   for (const [revision, kind] of refCandidates(name)) {
-    const commit = await verifyCommit(repo, revision);
+    const prefix =
+      kind === 'commit' &&
+      /^[0-9a-f]{7,63}$/i.test(revision) &&
+      !/^([0-9a-f]{40}|[0-9a-f]{64})$/i.test(revision);
+    const commit = prefix
+      ? await commitByPrefix(repo, revision)
+      : await verifyCommit(repo, revision);
     if (commit) return { ref: name, kind, commit };
   }
   throw notFound(`Revision "${name}"`);

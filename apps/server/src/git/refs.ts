@@ -25,6 +25,12 @@ export interface Tag {
   subject: string;
 }
 
+/**
+ * Names come from `%(refname:lstrip=2)`, not `:short`: when a branch and a
+ * tag share a name, `:short` prints `heads/v1` and `tags/v1`, which are not
+ * the names the API takes.
+ */
+
 /** Branches listed at most; before git 2.41 ahead/behind costs one git call per branch. */
 export const MAX_BRANCHES = 200;
 
@@ -55,7 +61,7 @@ export async function supportsAheadBehind(): Promise<boolean> {
 }
 
 const BRANCH_FORMAT =
-  '%(refname:short)%00%(objectname)%00%(committerdate:iso-strict)%00%(subject)%00%(authorname)';
+  '%(refname:lstrip=2)%00%(objectname)%00%(committerdate:iso-strict)%00%(subject)%00%(authorname)';
 
 export async function listBranches(
   repo: RepoLocation,
@@ -98,7 +104,7 @@ export async function listTags(repo: RepoLocation): Promise<Tag[]> {
   const out = await git(repo, [
     'for-each-ref',
     '--sort=-creatordate',
-    '--format=%(refname:short)%00%(objecttype)%00%(objectname)%00%(*objectname)%00%(creatordate:iso-strict)%00%(contents:subject)',
+    '--format=%(refname:lstrip=2)%00%(objecttype)%00%(objectname)%00%(*objectname)%00%(creatordate:iso-strict)%00%(contents:subject)',
     'refs/tags',
   ]);
 
