@@ -1,13 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { archiveStream } from '../git/archive.js';
 import type { RepoRegistry } from '../git/repos.js';
 import { resolveCommit } from '../git/resolve.js';
-import { gitStream } from '../git/run.js';
 import { findRepo } from './repos.js';
 
 const FORMATS = {
-  zip: { git: 'zip', type: 'application/zip', extension: 'zip' },
-  'tar.gz': { git: 'tar.gz', type: 'application/gzip', extension: 'tar.gz' },
+  zip: { type: 'application/zip', extension: 'zip' },
+  'tar.gz': { type: 'application/gzip', extension: 'tar.gz' },
 } as const;
 
 const archiveQuery = z.object({
@@ -27,10 +27,9 @@ export async function archiveRoutes(
     const format = FORMATS[query.format];
 
     const label = `${repo.name}-${ref.replace(/[^A-Za-z0-9._-]+/g, '-')}`;
+    const stream = await archiveStream(repo, commit, label, query.format);
     reply.header('Content-Type', format.type);
     reply.header('Content-Disposition', `attachment; filename="${label}.${format.extension}"`);
-    return reply.send(
-      gitStream(repo.path, ['archive', `--format=${format.git}`, `--prefix=${label}/`, commit]),
-    );
+    return reply.send(stream);
   });
 }
