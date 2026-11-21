@@ -828,9 +828,13 @@ config changes during a download. The end of an archive is written only after
 git exited cleanly, so a failure halfway cuts the download off.
 `apps/server/test/hostile.ts` builds repositories that set all of this, with
 OpenPGP, SSH and X.509 signatures and once through `include.path`, and the
-route tests call every endpoint on them. Differences: `export-ignore` and
-`export-subst` are no longer applied, and a zip over 65,534 entries or about
-4 GB is a 413 (no zip64). The git minimum stays at 2.30, because `HOME` is
+route tests call every endpoint on them. Archives also refuse (422) trees
+that would unpack outside their folder (`..` paths, `.git`, duplicates,
+entries below a symlink, symlinks to absolute paths or out of the archive),
+keep names and link targets as raw bytes, stream tar content and clamp dates
+to what the formats hold. Differences: `export-ignore` and `export-subst`
+are no longer applied, and a zip over 65,534 entries, about 4 GB or with a
+file over 100 MB is a 413 (no zip64, each file is compressed in memory). The git minimum stays at 2.30, because `HOME` is
 not passed at all, so older git finds no user config either.
 `blame.ignoreRevsFile` is a list `-c` cannot clear, so blame gets
 `--no-ignore-revs-file` instead. `GIT_NO_REPLACE_OBJECTS` is set, `grep`

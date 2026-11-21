@@ -13,7 +13,8 @@
   of `git archive`, which runs filters and compressors from the repository's
   config. `export-ignore` and `export-subst` are no longer applied, and a
   download that fails halfway is cut off instead of ending as a valid but
-  incomplete archive
+  incomplete archive. Trees that would unpack outside their folder are
+  refused (422), and zip downloads are limited to files of 100 MB
 
 ## 1.0.0 (2026-11-03)
 

@@ -72,6 +72,13 @@ content type, and every raw file gets a sandboxing `Content-Security-Policy`,
 so a file committed to a repository can never run script with access to
 git-ui.
 
+## A download fails with "unsafe_tree" (422)
+
+The commit's tree has entries that would write outside the archive's folder
+when unpacked, such as a `..` path or a symlink to `/etc`. git does not
+create such trees, but they can be built by hand, and git-ui refuses to
+archive them. The files can still be browsed.
+
 ## Downloads include files marked export-ignore
 
 git-ui builds zip and tar.gz downloads itself instead of running
