@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { listBranches, listTags } from '../api';
 import { useAsync } from '../composables/useAsync';
+import { refLabel, tagRef } from '../lib/paths';
 import AppIcon from './AppIcon.vue';
 
 const props = defineProps<{ repo: string; current: string }>();
@@ -26,14 +27,12 @@ const options = computed(() => {
   return needle ? names.filter((n) => n.toLowerCase().includes(needle)) : names;
 });
 
-const label = computed(() =>
-  /^[0-9a-f]{40}$/.test(props.current) ? props.current.slice(0, 7) : props.current,
-);
+const label = computed(() => refLabel(props.current));
 
 function choose(name: string) {
   open.value = false;
   filter.value = '';
-  emit('select', name);
+  emit('select', tab.value === 'tags' ? tagRef(name, refs.data.value?.branches ?? []) : name);
 }
 
 function onDocumentClick(event: MouseEvent) {

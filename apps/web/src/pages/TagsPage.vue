@@ -1,14 +1,19 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router';
-import { listTags } from '../api';
+import { listBranches, listTags } from '../api';
 import { useAsync } from '../composables/useAsync';
 import { useRepo } from '../composables/useRepo';
-import { commitUrl, treeUrl } from '../lib/paths';
+import { commitUrl, tagRef, treeUrl } from '../lib/paths';
 import { formatDate } from '../lib/time';
 
 const { name: repo } = useRepo();
 const tags = useAsync(
   () => listTags(repo.value),
+  () => repo.value,
+);
+// A tag that shares its name with a branch is linked as refs/tags/<name>.
+const branches = useAsync(
+  async () => (await listBranches(repo.value)).branches.map((b) => b.name),
   () => repo.value,
 );
 </script>
@@ -25,9 +30,11 @@ const tags = useAsync(
     <ul v-if="tags.data.value?.length" class="panel ref-list">
       <li v-for="tag in tags.data.value" :key="tag.name" class="ref-row">
         <div class="ref-row__main">
-          <RouterLink :to="treeUrl(repo, tag.name)" class="ref-row__name">{{
-            tag.name
-          }}</RouterLink>
+          <RouterLink
+            :to="treeUrl(repo, tagRef(tag.name, branches.data.value ?? []))"
+            class="ref-row__name"
+            >{{ tag.name }}</RouterLink
+          >
           <span v-if="tag.annotated" class="badge">annotated</span>
           <div class="ref-row__meta muted">
             {{ tag.subject }} ·

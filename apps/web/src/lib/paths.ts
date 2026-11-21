@@ -59,3 +59,19 @@ export function formatBytes(bytes: number): string {
   }
   return `${value < 10 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`;
 }
+
+/**
+ * The ref to put in a URL for a tag. A bare name means the branch when a
+ * branch and a tag share it (the server looks for branches first), so such
+ * a tag is linked by its full name.
+ */
+export function tagRef(name: string, branches: Iterable<string>): string {
+  for (const branch of branches) if (branch === name) return `refs/tags/${name}`;
+  return name;
+}
+
+/** How a ref from a URL is shown: short shas and names without refs/heads/ or refs/tags/. */
+export function refLabel(ref: string): string {
+  if (/^([0-9a-f]{40}|[0-9a-f]{64})$/.test(ref)) return ref.slice(0, 7);
+  return ref.replace(/^refs\/(heads|tags)\//, '');
+}

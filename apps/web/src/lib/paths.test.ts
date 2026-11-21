@@ -6,6 +6,8 @@ import {
   formatBytes,
   joinPathParam,
   parentPath,
+  refLabel,
+  tagRef,
   treeUrl,
 } from './paths';
 
@@ -45,5 +47,18 @@ describe('repository links', () => {
       '/notes/blob/main/docs/C%23%20notes%3F.md',
     );
     expect(encodePath('über/café.md')).toBe('%C3%BCber/caf%C3%A9.md');
+  });
+
+  it('links a tag by its full name only when a branch has the same name', () => {
+    expect(tagRef('v1', ['main'])).toBe('v1');
+    expect(tagRef('v1', ['main', 'v1'])).toBe('refs/tags/v1');
+    expect(treeUrl('demo', tagRef('v1', ['v1']))).toBe('/demo/tree/refs%2Ftags%2Fv1');
+  });
+
+  it('labels refs without their namespace and shas short', () => {
+    expect(refLabel('refs/tags/v1')).toBe('v1');
+    expect(refLabel('refs/heads/main')).toBe('main');
+    expect(refLabel('feature/x')).toBe('feature/x');
+    expect(refLabel('a'.repeat(40))).toBe('aaaaaaa');
   });
 });
