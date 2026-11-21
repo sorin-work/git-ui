@@ -157,7 +157,7 @@ describe('archive route', () => {
 
   it('archives commits dated outside what zip and tar fields hold', async () => {
     const future = await TestRepo.create(root.dir, 'future');
-    await future.commit('far ahead', { 'a.txt': 'a\n' }, { date: '2200-01-01T00:00:00Z' });
+    await future.commit('far ahead', { 'a.txt': 'a\n' }, { date: '@9000000000 +0000' });
     const out = await tempDir();
     try {
       for (const format of ['zip', 'tar.gz']) {
