@@ -1,0 +1,885 @@
+# Roadmap
+
+Things I might add to git-ui. The app already covers what I need to browse
+repositories day to day (files, history, diffs, blame, compare, search,
+insights, downloads), so nothing here is promised or scheduled. These are
+ideas, written down with enough detail that I (or anyone else) can pick one up
+later without starting from zero. Items may change, move between groups or be
+dropped.
+
+What the app does today is in the [README](README.md) and the notes under
+[docs/](docs/).
+
+- **Next**: small or well understood, or things I would not want to leave
+  open. I would start with these.
+- **Later**: worth doing, but bigger or waiting on a decision.
+- **Maybe**: not sure yet that they are worth the extra complexity.
+
+Sizes are rough: **S** is an evening or two, **M** a few evenings up to a
+couple of weekends, **L** several weeks of spare time.
+
+Each item is meant to fit in one pull request and to be covered by the test
+suite. There are no browser tests and no database. Server tests create real
+repositories in a temporary folder (`apps/server/test/repo.ts`) and call the
+routes through `app.inject`, so they run the same git commands production
+does; parsers have unit tests next to the command that feeds them. Web tests
+run in jsdom: the pure helpers in `src/lib/` directly, and a few components
+with @vue/test-utils. So logic worth testing belongs in `apps/server/src/git/`
+(git calls and parsers), `apps/server/src/lib/` (everything else on the
+server) or `apps/web/src/lib/` (everything in the browser that is not
+markup), not inside a route handler or a component. Below, `server/` stands
+for `apps/server/src/` and `web/` for `apps/web/src/`.
+
+The hardest part of this app is that it runs `git` on the host against
+repositories it does not control. A repository's config, attributes, links
+and refs are all input. Items that touch `server/git/run.ts`,
+`server/git/validate.ts` or `server/git/repos.ts` should come with a test
+that builds a repository designed to break them.
+
+"Depends on" lists real prerequisites only. Items that merely touch the same
+file are not listed there; the bigger overlaps are mentioned in the items.
+
+When an item ships, its group cell in the Overview becomes `Shipped`, its
+section moves under the `## Shipped` heading at the end and shrinks to one
+paragraph (what was built, how it differs from what is written here, what is
+still open), and the README, the docs and the CHANGELOG (under an
+`Unreleased` heading at the top) are updated in the same pull request.
+
+## Overview
+
+| #   | Item                                        | Group | Area        | Size | Depends on |
+| --- | ------------------------------------------- | ----- | ----------- | ---- | ---------- |
+| 1   | Repositories cannot make git run programs   | Next  | security    | M    | -          |
+| 2   | Repositories stay inside REPOS_DIR          | Next  | security    | M    | -          |
+| 3   | Paths and refs that mean one thing          | Next  | security    | S    | -          |
+| 4   | Bounded git work                            | Next  | ops         | M    | -          |
+| 5   | Login throttling and security headers       | Next  | security    | S    | -          |
+| 6   | Insights for long histories                 | Later | correctness | S    | -          |
+| 7   | A cache bounded by size                     | Later | performance | S    | -          |
+| 8   | A faster repository list                    | Later | performance | M    | -          |
+| 9   | Choosing which repositories are shown       | Later | repos       | S    | -          |
+| 10  | Repositories in nested folders              | Later | repos       | M    | 2, 8       |
+| 11  | Every legal branch and tag name             | Later | refs        | M    | 3          |
+| 12  | Large commits and comparisons               | Later | diffs       | M    | 3          |
+| 13  | Ignoring whitespace and expanding context   | Later | diffs       | M    | -          |
+| 14  | Word-level changes in diffs                 | Later | diffs       | S    | -          |
+| 15  | Patch and diff downloads                    | Later | diffs       | S    | -          |
+| 16  | Permanent links                             | Later | web         | S    | -          |
+| 17  | Regular expression search                   | Later | search      | S    | 3, 4       |
+| 18  | File history with diffs                     | Later | history     | M    | -          |
+| 19  | Blame: earlier versions and ignored commits | Later | history     | M    | -          |
+| 20  | Tag pages and releases                      | Later | refs        | S    | -          |
+| 21  | Git LFS pointer files                       | Later | files       | S    | -          |
+| 22  | Submodule links                             | Later | files       | S    | -          |
+| 23  | Markdown fixes                              | Later | web         | S    | -          |
+| 24  | Clone URLs                                  | Later | repos       | S    | -          |
+| 25  | Atom feeds                                  | Later | api         | S    | -          |
+| 26  | Serving under a sub-path                    | Later | ops         | M    | -          |
+| 27  | Accessibility pass                          | Later | ui          | M    | -          |
+| 28  | Metrics and slow git calls in the log       | Later | ops         | S    | -          |
+| 29  | Supported git versions and upgrades         | Later | ops         | S    | -          |
+| 30  | A tighter docker setup                      | Later | ops         | S    | -          |
+| 31  | Page tests for the web app                  | Later | tests       | M    | -          |
+| 32  | Commit graph                                | Maybe | history     | L    | -          |
+| 33  | Search across all repositories              | Maybe | search      | M    | 4          |
+| 34  | Verified signatures                         | Maybe | history     | L    | 1          |
+| 35  | Notebooks and CSV files                     | Maybe | files       | M    | -          |
+| 36  | Several users and per-repository access     | Maybe | auth        | L    | 9          |
+| 37  | Login through a reverse proxy               | Maybe | auth        | S    | 5          |
+
+## Next
+
+### 1. Repositories cannot make git run programs
+
+The runner in `server/git/run.ts` already turns off the pager, colors,
+`core.fsmonitor` and hooks, and passes `--no-textconv --no-ext-diff` to
+`show`, `log`, `diff` and `blame`. That is not every way a repository's own
+config can start a program. I checked two more with a throwaway repository and
+git 2.43, using the exact flags the runner adds:
+
+- `log.showSignature=true` and `gpg.program=/path/to/script` in the
+  repository's `.git/config`, plus one commit with a `gpgsig` header: a plain
+  `git log --format=%H -1` runs the script. Every history page and the
+  repository list (`lastCommit` in `server/git/summary.ts`) would do it.
+- `filter.evil.smudge=<script>` in the config and `* filter=evil` in a
+  committed `.gitattributes`: `git archive` runs the smudge command for every
+  file. That is the zip and tarball download.
+
+The same test showed that `color.diff=always` in the repository config beats
+the `color.ui=never` the runner sets, so `git show` prints escape codes and the
+diff parser reads garbage. Programs and output format are the same problem:
+the repository's config is input, and today only some of it is overridden.
+
+- One list of pinned config in `run.ts`, passed as `-c key=value` on every
+  call, with a comment per group:
+  - programs: `log.showSignature=false`, `gpg.program`, `gpg.ssh.program`
+    and `gpg.x509.program` set to `false` (the binary, which exits 1),
+    `core.fsmonitor=false`, `core.hooksPath=/dev/null`,
+    `core.sshCommand`, `diff.external` cleared, `blame.ignoreRevsFile` cleared
+    (a missing file makes every blame fail today);
+  - output: `color.diff`, `color.branch`, `color.grep`, `color.decorate`,
+    `color.blame.*` all `never`; `diff.noprefix=false`,
+    `diff.mnemonicPrefix=false`, `diff.relative=false`, `diff.srcPrefix` and
+    `diff.dstPrefix` back to `a/` and `b/`, `core.quotePath=false`,
+    `i18n.logOutputEncoding=UTF-8`, `log.decorate=false`, `log.showRoot=true`,
+    `grep.patternType=fixed`, `grep.lineNumber=false`;
+  - files outside the repository read through config:
+    `mailmap.file`, `format.signatureFile` cleared.
+- The environment: today `invocation()` copies all of `process.env`. Start
+  from an empty object and pass only `PATH`, `LANG` and the git variables we
+  set. Add `GIT_CONFIG_NOSYSTEM=1` and `GIT_CONFIG_GLOBAL=/dev/null` so the
+  host's own config does not change output either, and drop every inherited
+  `GIT_*` variable (`GIT_DIR`, `GIT_CONFIG_PARAMETERS`, `GIT_EXTERNAL_DIFF`,
+  `GIT_ALTERNATE_OBJECT_DIRECTORIES` among them).
+- Filters in `git archive`: there is no single switch, because the driver
+  names come from the repository. Read them first with
+  `git config --get-regexp '^filter\.'` (reading config runs nothing) and pass
+  `-c filter.<name>.smudge=cat -c filter.<name>.process= -c filter.<name>.required=false`
+  for each one. Whether an empty `process` really disables a long-running
+  filter has to be proven by the test, not assumed.
+- Tricky: `GIT_CONFIG_GLOBAL` needs git 2.32. The README promises 2.30. Either
+  raise the minimum (item 29 adds a start-up check) or fall back to `HOME`
+  pointing at an empty folder. I lean towards raising it to 2.32; Debian
+  bookworm and Ubuntu 22.04 are past it.
+- Tricky: `withSafetyFlags` skips leading `-c` pairs to find the subcommand.
+  Adding config keeps working only if every pinned value goes before the
+  caller's own `-c` pairs, as `BASE_ARGS` does now. A unit test should check
+  that a caller's `-c core.quotepath=off` still wins.
+- Tricky: `include.path` and `includeIf` in a repository config can pull in
+  any file the server can read. That only sets config, which is now pinned,
+  but it is a way to read a file's existence. I would accept that and say so.
+- Tests: `server/git/run.test.ts` for the argument and environment list. A
+  new `apps/server/test/hostile.ts` that builds a repository whose config sets
+  every program key above to a script that creates a marker file, with a
+  signed commit and a filter attribute. Then call every route against it
+  (tree, blob, raw, blame, commits, commit, compare, branches, tags, search,
+  insights, languages, archive) and assert the marker does not exist. One
+  more test with `color.diff=always` and `diff.noprefix=true` that checks the
+  commit route still parses.
+- Undecided: `refs/replace/` objects. They make `git log` show a different
+  commit than the one with that sha, which is surprising but runs nothing.
+  `GIT_NO_REPLACE_OBJECTS=1` would show the real history. I lean towards
+  setting it.
+
+### 2. Repositories stay inside REPOS_DIR
+
+`RepoRegistry` follows symlinks only when they resolve inside `REPOS_DIR`
+(`isInside` in `server/git/repos.ts`). There are other ways for a directory
+inside `REPOS_DIR` to make git read a repository somewhere else on the
+machine, and none of them are checked:
+
+- a `.git` file (`gitdir: /home/someone/secret/.git`). `detectRepo` accepts
+  any `.git` file, because worktrees and submodules use them;
+- `commondir` inside a git directory, which linked worktrees use to point at
+  the main repository;
+- `objects/info/alternates`, which adds another repository's objects. With it
+  every blob of that repository can be read through `/raw` by its sha;
+- `objects`, `refs` or `HEAD` in a bare repository being symlinks themselves.
+
+There is also discovery. git runs with `cwd` set to the repository and looks
+upwards for a `.git` when the folder stops being a repository between the
+listing and the call (deleted, half-copied). If `REPOS_DIR` sits inside a
+checkout, git then answers from that outer repository.
+
+- `detectRepo` returns the real git directory, not only `bare`. For a `.git`
+  file, read and parse it (`gitdir: <path>`, relative to the file). Then
+  follow `commondir` and every line of `objects/info/alternates`, recursively
+  and with a depth limit, and `realpath` each one. All of them must be inside
+  `realpath(REPOS_DIR)`. Otherwise the repository is left out and a warning is
+  logged once with the reason.
+- `objects`, `refs` and `HEAD` symlinks get the same check.
+- Run git against the checked directory explicitly: `RepoLocation` gets
+  `gitDir`, and `invocation()` sets `GIT_DIR` to it (and no work tree; nothing
+  we run needs one). That ends discovery for good. Set
+  `GIT_CEILING_DIRECTORIES` to the parent of `REPOS_DIR` as well, for the
+  seed scripts and anything that still runs with a `cwd`.
+- Tricky: `safe.directory`. git checks ownership of a discovered directory but
+  not of an explicit `GIT_DIR`, I believe. Check this with a repository owned
+  by another uid in a test (or document why it cannot be tested in CI), and
+  keep the `-c safe.directory` only if it is still needed.
+- Tricky: worktrees whose main repository is also in `REPOS_DIR` are fine and
+  must keep working. A test with a main clone and a linked worktree next to
+  each other.
+- Tricky: the check and the git call are not atomic. Someone who can write to
+  `REPOS_DIR` can swap a link after the check. That person can already put any
+  repository there, so I would only make sure the path we run is the resolved
+  one and say the folder itself must be trusted.
+- `docs/troubleshooting.md` gets an entry for repositories skipped this way.
+- Undecided: an opt-in (`ALLOW_EXTERNAL_GIT_DIRS=true`) for people who keep
+  worktrees elsewhere on purpose. I lean towards no until someone asks.
+- Tests: `server/git/repos.test.ts`: a `.git` file pointing outside, a
+  `commondir` pointing outside, alternates outside (and alternates inside,
+  which must work), a symlinked `objects`; a routes test that `raw` cannot
+  read an outside blob by sha; a test that removes a repository's `.git`
+  after listing and checks the next call fails instead of answering from a
+  parent repository.
+
+### 3. Paths and refs that mean one thing
+
+Paths from the URL are passed to git after `--`, which stops them being read
+as options. They are still pathspecs. `normalizeRepoPath` keeps `:`, `*`, `?`
+and `[`, so `path=:(exclude)src` or `path=*.ts` on `/commits` and `/search`
+works as pathspec magic and globbing instead of naming a file. Nothing leaves
+the repository that way, but it is not what the API promises, it can be slow
+(`:(glob)**` over a large tree) and it makes every later item that passes a
+path harder to reason about.
+
+Refs have the same kind of problem. `resolveCommit` hands git
+`<name>^{commit}`, and git's lookup order decides what a name means: a tag
+`main` wins over the branch `main`, a branch called `deadbeef` loses to a
+commit whose sha starts with it, and `heads/x`, `refs/remotes/...`,
+`refs/stash` or `@` all resolve too.
+
+- Set `GIT_LITERAL_PATHSPECS=1` for every call in `run.ts`. Paths are then
+  exactly paths. Places that want patterns later (item 17) build the magic
+  themselves, for example `:(glob)`, which works even with literal pathspecs
+  on.
+- `resolveCommit` tries, in this order: a full 40 or 64 character sha;
+  `refs/heads/<name>`; `refs/tags/<name>`; an abbreviated sha of at least 7
+  characters. Each with `rev-parse --verify --quiet --end-of-options`. It
+  returns which one matched (`kind: 'branch' | 'tag' | 'commit'`) and the API
+  passes it on, so the web app can show "tag v1" rather than guess.
+- Only `refs/heads` and `refs/tags` can be named. `HEAD` stays allowed as the
+  fallback for a repository with a detached HEAD.
+- `--end-of-options` before revisions in the other commands too (`log`,
+  `show`, `ls-tree`, `blame`, `grep`, `merge-base`, `rev-list`, `shortlog`,
+  `archive`, `cat-file`). They only ever receive resolved shas today, so this
+  is defence in depth, which is why it belongs in the runner's tests rather
+  than every call site: a unit test that fails when an argument built from
+  the request is neither a sha nor after `--`.
+- Tricky: not every command took `--end-of-options` in git 2.30. Check each
+  against the minimum version from item 1 and leave out the ones that do not.
+- Tricky: when a branch and a tag share a name, the URL `/repo/tree/v1` now
+  always means the branch. The branches and tags pages link with the name
+  only, so the tag would become unreachable. Accept `refs/tags/v1` as the ref
+  in URLs for exactly that case, and have the tags page use it when a branch
+  of the same name exists.
+- Tests: `server/git/validate.test.ts` and route tests: `path=*.md` finds
+  nothing unless a file is called that, `:(exclude)` is a literal name, a tag
+  and a branch with the same name, a branch that looks like a sha, `refs/stash`
+  is refused.
+
+### 4. Bounded git work
+
+Every git call is limited to 15 seconds and 32 MB, but nothing limits how many
+run at once, and the one streaming call has no limits at all.
+
+- The repository list runs three git processes per repository
+  (`summarize` in `server/git/summary.ts`). With 200 repositories one page
+  load starts 600 processes at the same moment.
+- The branches page starts one `rev-list` per branch, up to `MAX_BRANCHES`
+  (200), all in parallel (`listBranches` in `server/git/refs.ts`).
+- Archives go through `gitStream`, which has no timeout, keeps running when
+  the browser gives up, and collects stderr without a limit. Five people
+  downloading a large repository and closing the tab leave five `git archive`
+  processes compressing for nobody.
+
+Design:
+
+- A small semaphore in `server/lib/` (no dependency), used by `run()` and
+  `gitStream()`. `GIT_MAX_PROCESSES` sets the limit; the default is twice the
+  number of CPUs. A call that waits longer than a few seconds for a slot fails
+  with a new `GitError` reason and the error handler answers 503 with
+  `code: busy` and `Retry-After`.
+- Archives: a separate, smaller limit (`ARCHIVE_MAX_CONCURRENT`, default 2),
+  a timeout of their own (`ARCHIVE_TIMEOUT_MS`, default ten minutes), the
+  child killed when the response closes early, and stderr capped at a few KB.
+  The troubleshooting note "downloads are not limited" changes.
+- Ahead and behind: `git for-each-ref --format=%(ahead-behind:<default>)`
+  does all branches in one process, from git 2.41. Use it when git is new
+  enough (item 29 gives the version) and otherwise keep `rev-list`, now under
+  the semaphore.
+- The `/repos` list: keep the per-repository calls but run them under the
+  semaphore; item 8 makes them cheaper.
+- Tricky: a semaphore slot must be released on every path out: success,
+  failure, timeout, a stream that errors and a stream the client abandons.
+  Tests for each.
+- Tricky: the semaphore makes queueing visible. A single request that needs
+  many processes (the repository list) can fill it and make a quick file view
+  wait behind it. Two queues (one for list-style fan out) are possible but I
+  would start with one and look at the numbers from item 28.
+- Undecided: rate limits per client. The semaphore protects the machine, not
+  fairness. I would leave rate limits out.
+- Tests: unit tests for the semaphore (order, release on rejection, wait
+  timeout); `server/git/run.test.ts`: a stream destroyed early kills git; the
+  503 shape in `server/lib/error-handler.test.ts`; `server/git/refs` tests
+  get the same numbers with both ahead/behind paths.
+
+### 5. Login throttling and security headers
+
+Basic auth (`server/lib/basic-auth.ts`) compares in constant time, but there
+is no limit on attempts: a script can guess passwords as fast as the server
+answers. And the web app is served by nginx (`apps/web/nginx.conf`) without
+any security headers. Only raw files get a CSP.
+
+- Throttling: count failed attempts per client address in memory. After 10
+  failures in 5 minutes answer 429 with `Retry-After` until the window passes,
+  without checking the password. Successful logins do not reset other
+  clients. Keep the map bounded (drop the oldest entries past a few thousand
+  addresses).
+- The client address: in docker every request comes from nginx, so the
+  server sees one address and one bad client would lock everyone out. Fastify
+  has `trustProxy`; add `TRUST_PROXY` (off by default, `1` in
+  `docker-compose.yml` for the single nginx hop). Turning it on without a proxy
+  lets clients choose their own address with `X-Forwarded-For`, so the docs
+  must say when to use it.
+- Headers in nginx, for the app shell and assets:
+  `Content-Security-Policy` (`default-src 'self'`, `img-src 'self' data: https:`,
+  `style-src 'self' 'unsafe-inline'` if Vue's style bindings need it,
+  `frame-ancestors 'none'`, `base-uri 'none'`, `form-action 'none'`),
+  `Referrer-Policy: same-origin` (README links would otherwise send repository
+  and branch names to other sites), `X-Content-Type-Options: nosniff`,
+  `Permissions-Policy` with everything off.
+- Tricky: nginx drops all `add_header` lines from the `server` block in any
+  `location` that has its own `add_header`. `/assets/` has one for
+  `Cache-Control`. Put the headers in a snippet included in every location, and
+  test the config with `nginx -t` in the image build.
+- Tricky: the CSP has to match what the app really does: highlight.js output
+  uses classes only, the theme toggle sets an attribute, and the language bar
+  and activity chart use inline `style` widths. Check the production build in
+  a browser with the CSP on, not only the dev server, which does not use
+  nginx.
+- API responses: `X-Content-Type-Options: nosniff` on JSON too, and
+  `Cache-Control: private` when auth is on, so a shared proxy never keeps an
+  authenticated answer.
+- Undecided: whether README images from other sites stay allowed
+  (`img-src https:`). They leak the reader's address to that site. Item 23
+  makes that a setting; until then I keep them working.
+- Tests: `server/lib/basic-auth.test.ts` for the counter, the 429, the window
+  and `/api/health` staying open; an `app.test.ts` case with `TRUST_PROXY`.
+  The nginx part has no automated test today; a `docker build` of the web
+  image runs `nginx -t`.
+
+## Later
+
+### 6. Insights for long histories
+
+`weeklyActivity` in `server/git/insights.ts` reads the commit time of every
+commit in the history and then calls `Math.max(...times)`. Spreading an array
+that large into a call throws `RangeError` in V8 somewhere past a hundred
+thousand elements, so the insights page of a big repository (the Linux kernel,
+but also many company monorepos) is a 500. The route is also not cached, so
+the full `log` and `shortlog` walks run again on every visit.
+
+- Replace the spread with a loop, and stop reading the whole history: the
+  first line of `git log --format=%ct` is the newest commit in practice, so
+  run `git log --since=<that minus 52 weeks>` for the buckets.
+- Cache the result by commit sha, like the languages route does.
+- Names: `shortlog` applies `.mailmap`, while `%an` in `log` does not. The
+  contributors list merges people that the history page shows apart. Use
+  `%aN`/`%aE` in `LOG_FORMAT` and the blame and latest formats, so both agree,
+  and say so in the docs. `mailmap.file` is pinned by item 1; `.mailmap` from
+  the commit itself is what bare repositories use (`mailmap.blob`), and
+  regular clones read it from the working tree. Set `mailmap.blob=<commit>:.mailmap`
+  so both kinds read it from the commit being shown.
+- Tricky: a test cannot build 150,000 commits through `git commit`. Use
+  `git fast-import` with a generated stream, which takes a second or two, or
+  test the bucketing with a large array of timestamps and keep one route test
+  small.
+- Tests: `server/git/insights.test.ts`.
+
+### 7. A cache bounded by size
+
+`gitCache` in `server/lib/cache.ts` keeps 500 entries, whatever their size. A
+file is up to 1 MB of text, a commit diff can be most of 32 MB of output once
+parsed into objects, and the file list for the finder holds up to 50,000
+paths. Five hundred large entries are several GB, and the server has no
+memory limit in docker.
+
+- `LruCache` counts an approximate size per entry and evicts by total size
+  (`CACHE_MAX_MB`, default 256) as well as by count.
+- The loader knows the size best: `cached(parts, load, sizeOf)`, where
+  `sizeOf` gets the result. For blobs it is the content length, for diffs the
+  output length from git (pass it out of `commitDiff`), for file lists the sum
+  of path lengths. A default of `JSON.stringify(value).length` is too slow for
+  big values; use it only in tests.
+- Tricky: the cache stores promises, so the size is known only once a promise
+  resolves. Count pending entries as zero and evict when they resolve.
+- Tricky: entries bigger than the whole budget should not be cached at all
+  rather than flushing everything else.
+- Tests: `server/lib/cache.test.ts`.
+
+### 8. A faster repository list
+
+`RepoRegistry.list()` reads the whole of `REPOS_DIR` and checks every entry on
+every request, and `get(name)` calls `list()`, so opening one file in one
+repository stats every repository on the machine first. The home page then
+runs `summarize` for each repository.
+
+- `get(name)` checks only `REPOS_DIR/<name>` and `REPOS_DIR/<name>.git`
+  (after `isSafeRepoName`) and applies the same rules as `list()`, including
+  the checks from item 2. A test that both agree for every fixture.
+- `list()` keeps its result for a couple of seconds. New repositories still
+  appear almost at once, which the docs promise.
+- `summarize`: the default branch from reading `HEAD` (a file), the
+  description from a file, and one git call for the last commit, cached by the
+  sha of the default branch. That sha can come from `refs/heads/<branch>` or
+  `packed-refs` without git, but parsing refs by hand breaks with the reftable
+  format. Lean: one `git for-each-ref --format=... refs/heads/<branch>` per
+  repository, cached by its output.
+- The API can sort by last activity and the home page can page or virtualise
+  long lists. I would only do the sorting until someone has 500 repositories.
+- Tests: `server/git/repos.test.ts` and `server/routes/repos.test.ts`.
+
+### 9. Choosing which repositories are shown
+
+Every repository in `REPOS_DIR` is published. There is no way to keep one out
+without moving it. gitweb and cgit solve this with a marker file
+(`git-daemon-export-ok`) or a list.
+
+- `REPOS_EXPORT_OK=true`: only repositories with a `git-daemon-export-ok` file
+  in their git directory are shown, as with gitweb.
+- `REPOS_EXCLUDE`: a comma separated list of names or simple globs
+  (`*-private`, `archive-*`), matched against the URL name.
+- A hidden repository is a 404 on every route, the same answer as one that
+  does not exist, so names cannot be probed.
+- Tricky: the filter must live in the registry, so `get()` and `list()` both
+  apply it, and so does every later feature that walks repositories (feeds,
+  search across repositories).
+- Tests: `server/git/repos.test.ts` and one route test per rule.
+
+### 10. Repositories in nested folders
+
+Only direct subdirectories count. Many people keep `code/work/api` and
+`code/personal/notes`, or a server with `srv/git/team/project.git`.
+
+- `REPOS_DEPTH` (default 1, at most 3). Names become paths: `team/project`.
+- URLs: the router's first segment is `:repo`, and views like `tree` follow
+  it. A slash in the name would make `/team/project/tree/main` ambiguous. Use
+  one encoded segment (`team%2Fproject`) in URLs, as branch names already do
+  (`web/lib/paths.ts`), and accept the slash form on the API.
+- `isSafeRepoName` checks each segment; the full name gets a length limit.
+- The home page groups repositories by folder.
+- Tricky: stop at the first repository found. A checkout's subfolders are its
+  own files, and vendored repositories or submodule checkouts inside a working
+  tree must not show up as separate repositories.
+- Tricky: walking is not free. Skip hidden folders, stop at the depth, cap the
+  number of entries read per folder, and do not follow symlinked folders while
+  walking (a loop) unless they pass the inside check.
+- Depends on item 2 (every level needs the escape checks) and item 8 (the
+  registry is rewritten there).
+- Tests: `server/git/repos.test.ts` with nested fixtures, a repository inside
+  a working tree, a symlink loop.
+
+### 11. Every legal branch and tag name
+
+`isSafeRef` only allows letters, digits and `._/@+-`. git allows much more:
+`fix/ünicode`, `issue#12`, `a,b`, `release(2024)` and `wip!` are all valid
+branch names. Those branches appear on the branches page (it lists whatever
+`for-each-ref` prints) and clicking one gives a 400 "Invalid ref".
+
+- Validate with git's own rules from `git check-ref-format`, reimplemented in
+  `server/git/validate.ts` (no process per request): no control characters,
+  space, `~`, `^`, `:`, `?`, `*`, `[`, `\`; no `..`, no `@{`, no `//`, no
+  component starting with `.` or ending with `.lock`, not `@` alone. Plus our
+  own: no leading `-`, at most 255 bytes.
+- Lookups always go through `refs/heads/<name>` and `refs/tags/<name>` with
+  `--end-of-options` (item 3), so a strange name can never be read as a
+  revision expression. That is what makes it safe to loosen the characters.
+- The web app already encodes every segment. Check `%`, `#`, `?` and non-ASCII
+  in a route test through `app.inject` and a web test for `paths.ts`.
+- Tricky: `refname:short` in `for-each-ref` can print an ambiguous short name
+  (`heads/main` when a tag `main` exists). Use `refname` and strip the prefix
+  ourselves.
+- Tricky: the archive file name already replaces odd characters; check
+  non-ASCII there and in `Content-Disposition`.
+- Depends on item 3.
+- Tests: the cases from git's own `t1402-check-ref-format.sh` in
+  `server/git/validate.test.ts`, and route tests with real branches of those
+  names.
+
+### 12. Large commits and comparisons
+
+A commit or comparison is one `git show` or `git diff` call whose whole
+output is parsed. A commit that touches one huge generated file is a 413 for
+all of it, and a commit with 5,000 changed files sends every hunk to the
+browser. `DiffView` collapses files over 400 lines, but the page still builds
+5,000 components.
+
+- First the list: `git show --numstat --name-status -z` (or `--raw`) gives
+  every file with its counts without the patch. The API returns that plus the
+  patch for the first files, up to a budget of lines (say 20,000).
+- The rest load per file: `/repos/:repo/commits/:sha/diff?path=` and the same
+  for compare, with `-- <path>` and, for renames, both paths.
+- A single file over a line limit says so and links to Raw and to its own
+  diff on demand.
+- The web app renders file sections lazily as they scroll into view.
+- Tricky: rename detection is limited to the paths passed, so the per-file
+  call must pass the old and the new name together with `--find-renames`.
+- Tricky: merges are shown against the first parent today
+  (`--diff-merges=first-parent`); the per-file call has to match.
+- Depends on item 3 (the per-file call passes a path as a pathspec).
+- Tests: route tests in `server/routes/commit.test.ts` and
+  `compare.test.ts` with a commit over the budget; `DiffView` tests.
+
+### 13. Ignoring whitespace and expanding context
+
+Re-indenting a file makes its diff unreadable, and there is no way to see more
+than three lines around a change.
+
+- `whitespace=ignore` (`-w`) and `context=<n>` (0 to 100) on the commit and
+  compare routes, part of the cache key. A toggle next to `DiffModeToggle`,
+  kept in the URL.
+- Expanding: "show more lines" between hunks fetches lines from the file at
+  the old or new commit through the existing blob route, and the hunk headers
+  give the line numbers. The mapping belongs in `web/lib/diff.ts`.
+- Tricky: in split mode both sides must stay aligned; between hunks the
+  unchanged lines are the same on both sides, with an offset.
+- Tricky: files over 1 MB have no content in the blob route; hide the expand
+  buttons there.
+- Tests: `web/lib/diff.test.ts` for the line mapping, a route test for `-w`.
+
+### 14. Word-level changes in diffs
+
+A changed line shows as one removed and one added line; finding the one
+character that changed is up to the reader.
+
+- In `web/lib/diff.ts`: pair removed and added lines inside a hunk (in order,
+  as many as there are on the shorter side), split each pair into tokens and
+  mark the differing ranges with a small LCS.
+- Render the ranges as `<del>` and `<ins>` inside the highlighted line, so the
+  change is not shown by color alone.
+- Tricky: the highlighted HTML from highlight.js and the word ranges overlap.
+  Split the token spans at range edges instead of nesting at random.
+- Tricky: cost. Skip lines over 500 characters and blocks over 50 lines.
+- Tests: `web/lib/diff.test.ts`, `DiffView.test.ts`.
+
+### 15. Patch and diff downloads
+
+There is no way to take a commit out of git-ui as a patch, for `git am` or for
+an email.
+
+- `/repos/:repo/commits/:sha/patch` (`git format-patch -1 --stdout`) and
+  `/diff` (the plain diff against the first parent), plus the same for a
+  comparison (`format-patch base..head`, capped at the 250 commits the
+  compare page shows). Links on the commit and compare pages.
+- Tricky: `format-patch` reads `format.*` config: `format.headers`,
+  `format.signature`, `format.signatureFile` (a file anywhere on the host,
+  pinned by item 1), `format.from`. Pass `--no-signature` and pin the rest.
+- Tricky: `format-patch` skips merge commits, and a root commit needs
+  `--root`. A merge gets the first-parent diff and no patch link.
+- Serve as `text/plain` with the raw file headers, or as an attachment.
+- Tests: route tests that the patch applies with `git am` in a fresh
+  repository.
+
+### 16. Permanent links
+
+A link to `/repo/blob/main/src/app.ts#L10-L20` points at other lines as soon
+as `main` moves.
+
+- `y` on the tree, blob and blame pages replaces the ref in the URL with the
+  full commit sha, as on GitHub, and a "Copy permanent link" button does the
+  same with the selected lines.
+- The ref selector shows "commit 1a2b3c4" when the ref is a sha.
+- Tricky: keep the line range from the hash. `web/lib/lines.ts` parses it.
+- Add `y` to `KeyboardHelp.vue`.
+- Tests: `web/lib/paths.test.ts` and a component test.
+
+### 17. Regular expression search
+
+Code search is literal (`--fixed-strings`). A regular expression is the usual
+next step, and the first thing people try.
+
+- `regex=1` on `/search` uses `git grep -E`. Not `-P`: PCRE backtracking can
+  run for a very long time on one bad pattern.
+- Tricky: glibc's ERE accepts backreferences, which can be exponential too.
+  Refuse `\1` to `\9`, cap the pattern at 200 characters, and give search its
+  own shorter timeout.
+- Tricky: `git grep` uses one thread per CPU by default. Pass `--threads=2`
+  so one search cannot take the machine, and count it in the semaphore.
+- A file pattern filter (`*.ts`) built as `:(glob)` pathspec by the server,
+  since pathspecs are literal after item 3.
+- Depends on items 3 and 4.
+- Tests: `server/routes/search.test.ts`.
+
+### 18. File history with diffs
+
+The history of a file is a list of commits. To see what each one did to the
+file you open the commit and look for the file among the others.
+
+- `/repos/:repo/commits?path=<file>&patch=1`, one page at a time, with each
+  commit's diff limited to that file (`git log --follow -p`).
+- On the history page of a file: each commit expands to its diff, with links
+  to "view the file at this commit" and blame.
+- Tricky: `--follow` combined with `--skip` and `-p` has to keep following
+  across pages; test a rename that falls on a page boundary.
+- Tricky: large and binary files follow the limits from item 12.
+- Tests: route tests in `server/routes/commits.test.ts`.
+
+### 19. Blame: earlier versions and ignored commits
+
+Blame shows who last touched each line, but often that is a reformat, and the
+interesting change is the one before.
+
+- "Blame before this change" on each line: blame again at `<sha>^` with the
+  path the line had in that commit. `--porcelain` prints a `filename` line
+  when the path differs; `parseBlame` ignores it today and must keep it.
+- `.git-blame-ignore-revs`: read the file from the commit being shown (not
+  from the working tree, which bare repositories do not have) and pass each
+  sha as `--ignore-rev`, capped at a few hundred. Mark lines that blame moved
+  past an ignored commit.
+- Tricky: `blame.ignoreRevsFile` in a repository config pointing at a missing
+  file makes every blame fail. Item 1 pins it; this item adds the supported
+  way.
+- Tests: `server/git/blame.test.ts` with a rename and an ignored commit.
+
+### 20. Tag pages and releases
+
+The tags page lists names, dates and subjects. An annotated tag's full message
+(release notes) is never shown, and there is no download from that page.
+
+- `/:repo/tag/:name`: the tag message rendered as markdown, the tagger, the
+  commit, zip and tar.gz downloads, and the commits since the previous tag
+  (the compare from the previous tag).
+- Sort by version as an option (`--sort=-v:refname`).
+- Tricky: a tag can point at a tree or blob, not only a commit.
+  `resolveCommit` fails on those; the page says so instead of 404.
+- Tests: route tests in `server/routes/refs.test.ts`.
+
+### 21. Git LFS pointer files
+
+A file stored with Git LFS shows as its three line pointer
+(`version https://git-lfs.github.com/spec/v1`, `oid sha256:…`, `size …`).
+
+- Recognise the pointer in `readBlob` (small file, exact format) and return
+  `lfs: { oid, size }`. The file page says "Stored with Git LFS" with the real
+  size, instead of the pointer text.
+- Not here: serving the real content. A bare repository on a server sometimes
+  has `lfs/objects/<aa>/<bb>/<oid>`, but reading that means building a file
+  path from repository data; it needs the same care as item 2.
+- Archives contain the pointers, not the files. Say so next to the download.
+- Tests: `server/routes/blob.test.ts`.
+
+### 22. Submodule links
+
+Submodules show in the file tree with their commit and nothing else.
+
+- Read `.gitmodules` from the commit and parse it in TypeScript (not with
+  `git config --blob`, which has its own include rules) to find each
+  submodule's URL.
+- Show the URL. When its last segment matches a repository git-ui serves,
+  link to that commit there; when it is http or https, link out.
+- Tricky: URLs with credentials (`https://user:token@host/x.git`) are common
+  in `.gitmodules` by mistake. Strip the user info before showing or linking.
+- Tricky: relative URLs (`../other.git`) resolve against the repository itself,
+  which is exactly the case where git-ui can link inside.
+- Tests: route test with a submodule; parser unit tests.
+
+### 23. Markdown fixes
+
+`web/lib/markdown.ts` has a few rough edges:
+
+- `resolveRelative` calls `decodeURIComponent` on every segment. A link like
+  `[x](100%25)` works, but `[x](100%)` throws `URIError` and the whole README
+  fails to render.
+- Relative links to folders (`docs/`) become blob URLs, which answer "is not a
+  file". Link to the tree when the target ends with `/`, and let the blob page
+  redirect to the tree when the path turns out to be a folder.
+- Headings have no ids, so `#install` links do nothing. Add ids with a
+  `user-content-` prefix so a heading cannot clobber a DOM property.
+- External images are loaded straight from the reader's browser: a tracking
+  pixel in a README sees who opened it. Add `referrerpolicy="no-referrer"` and
+  `loading="lazy"`, and a setting to block them (`MARKDOWN_EXTERNAL_IMAGES`,
+  `allow` or `block`), which item 5's CSP follows.
+- Tests: `web/lib/markdown.test.ts`.
+
+### 24. Clone URLs
+
+git-ui does not serve the git protocol, and the repository page does not say
+where to clone from.
+
+- `CLONE_URLS`: one or more base URLs (`ssh://git@host/srv/git/`,
+  `https://git.example.com/`). The repository page shows
+  `git clone <base><directory name>` for each, with a copy button.
+- The directory name can differ from the URL name (`notes.git` against
+  `notes`); the API returns it.
+- Tricky: never build the URL from the request's `Host` header, which the
+  client controls.
+- Tests: route test and a component test.
+
+### 25. Atom feeds
+
+People who follow a repository without logging in somewhere want a feed.
+
+- `/api/repos/:repo/commits.atom?ref=` and `/api/repos/:repo/tags.atom`, linked
+  from the history and tags pages with `<link rel="alternate">`.
+- Absolute links need the public address: `PUBLIC_URL`, not the `Host` header.
+- Tricky: commit messages can contain characters XML 1.0 does not allow at
+  all (most control characters). Escape and strip them.
+- Tricky: feed readers and basic auth. Many readers support credentials in
+  the URL; document that, nothing more.
+- `ETag` by commit sha so readers polling every few minutes cost nothing.
+- Tests: route tests that parse the XML.
+
+### 26. Serving under a sub-path
+
+Behind a reverse proxy people want `https://host/git/` rather than a
+subdomain. Everything assumes `/`: the router's history, the API client
+(`/api`), the asset URLs, and nginx.
+
+- `BASE_PATH` (default `/`) at build time for the web app: Vite's `base`,
+  `createWebHistory(BASE_PATH)`, and the API client prefix. The docker web
+  image takes it as a build argument and writes it into `nginx.conf`.
+- The server stays on `/api`; the proxy strips the prefix.
+- Tricky: build time against run time. A runtime setting would need the shell
+  to read it from `<base href>` or a small config file. Build time is simpler
+  and I lean towards it.
+- Tests: `web/lib/paths.test.ts` and `api/client.ts` tests with a base path.
+
+### 27. Accessibility pass
+
+There is some ARIA (44 attributes, mostly labels and `aria-expanded`), but no
+one has gone through the pages with a keyboard and a screen reader.
+
+- The ref selector and the file finder as proper listbox/combobox widgets:
+  arrow keys, `aria-activedescendant`, focus back to the button on Esc.
+- Diff tables: line number columns with headers, added and removed lines
+  marked by more than color (a visually hidden "added" / "removed").
+- The language bar and activity chart get a text alternative (a list or
+  table that screen readers read).
+- A skip link to the content, visible focus everywhere, a live region for
+  loading and errors, and contrast checked in both themes.
+- Undecided: `axe-core` as a dev dependency in the jsdom tests. It catches
+  missing names and roles but not contrast in jsdom. I lean towards adding it.
+- Tests: component tests for roles and keyboard behaviour.
+
+### 28. Metrics and slow git calls in the log
+
+When the server is slow I cannot tell whether it is one repository, one kind
+of page, or the machine.
+
+- `/api/metrics` in Prometheus text format, written by hand: requests by route
+  and status, git calls by subcommand with a duration histogram, timeouts,
+  too-large answers, the semaphore queue from item 4 and cache hits from
+  item 7.
+- Log every git call slower than a threshold (`SLOW_GIT_MS`, default 2000)
+  with subcommand, repository name and duration. Not the full arguments:
+  they contain search terms.
+- Tricky: the metrics endpoint is behind the same auth as the API. Add
+  `METRICS_TOKEN` if a scraper cannot do basic auth.
+- Tests: `server/routes` test for the format and the counters.
+
+### 29. Supported git versions and upgrades
+
+The README says git 2.30+, but nothing checks it, and CI runs whatever the
+runner has. Items 1, 3 and 4 want newer features.
+
+- At start, run `git --version` once, refuse to start below the minimum with
+  a clear message, and keep the version for feature checks
+  (`ahead-behind` from 2.41).
+- Settle the minimum with item 1 (2.32 for `GIT_CONFIG_GLOBAL`) and write it
+  in the README and the troubleshooting notes.
+- An upgrade section in the docs: there is no database or state to migrate,
+  only `.env` to keep, and the demo volume can be dropped. That is also the
+  whole backup story, and it should say so.
+- Undecided: a CI job that runs the server tests against the minimum git (a
+  container with an older git). It doubles the test time; I lean towards a
+  weekly run rather than every push.
+- Tests: `server/git/run.test.ts` for version parsing.
+
+### 30. A tighter docker setup
+
+The compose file mounts `REPOS_PATH` read-write, because the seeding of demo
+repositories needs to write. With your own repositories it does not.
+
+- `REPOS_MODE` (default `rw`, `ro` documented for real repositories) in the
+  volume line; the README example uses `ro` with `SEED_DEMO=false`.
+- The server container: `read_only: true` with a `tmpfs` for `/tmp`,
+  `cap_drop: [ALL]`, `security_opt: [no-new-privileges:true]`.
+- The web container: the unprivileged nginx image on port 8080.
+- Tricky: git on a read-only mount must not try to write: lock files for the
+  index refresh in clones (`GIT_OPTIONAL_LOCKS=0`), `commit-graph` or
+  `gc.auto` never run by the read commands, but test with a real read-only
+  mount once.
+- Tests: none automated; a manual compose run listed in the pull request.
+
+### 31. Page tests for the web app
+
+The web tests cover the helpers and three components (`DiffView`,
+`FileTree`, `LanguageBar`). Pages have none: pagination and filters on the
+history page, swapping refs on compare, line selection on the file page,
+the ref selector.
+
+- A small helper in `apps/web/test/` that mounts a page with a memory router
+  and a stubbed `fetch` answering from fixtures shaped like `web/api/types.ts`.
+- Tests for `CommitsPage`, `ComparePage`, `BlobPage` and `RefSelector`.
+- Tricky: `useAsync` ignores late responses; tests must wait for the right
+  request, not just a tick.
+
+## Maybe
+
+### 32. Commit graph
+
+A history list without branches drawn is hard to read in a repository with
+many merges.
+
+- Lanes computed from parents in `web/lib/graph.ts` (the server already
+  returns `parents`), drawn as SVG next to the list. `--topo-order` on the
+  history call so lanes are stable.
+- Tricky: paging. Lanes started on one page continue on the next, so the
+  state at the end of a page has to be carried over.
+- Tricky: `--topo-order` is slow on large histories without a commit-graph
+  file, and git-ui never writes one.
+- Why maybe: a lot of drawing code for a page that works without it.
+
+### 33. Search across all repositories
+
+Search is per repository. Finding which repository has a function means
+opening each.
+
+- `/api/search?q=` fans `git grep` out over every repository's default
+  branch under the semaphore from item 4, with a per-repository cap and a
+  total cap, and returns results as each repository answers.
+- Tricky: hidden repositories (item 9) must stay hidden.
+- Tricky: with 200 repositories this is 200 processes for one request. Without
+  an index it does not scale, and an index is a database, which the app does
+  not have.
+- Depends on item 4.
+
+### 34. Verified signatures
+
+Showing "verified" next to signed commits means running gpg or ssh-keygen,
+which item 1 stops a repository from doing.
+
+- The operator, not the repository, provides the program and the keys:
+  `SIGNING_KEYRING` and `SIGNING_ALLOWED_SIGNERS`, with `gpg.program` pinned to
+  the real binary and `GNUPGHOME` a read-only copy.
+- `%G?` and `%GK` in the log format, cached by sha.
+- Why maybe: gpg parses attacker-controlled data on every page, and the
+  answer depends on keys the operator has to keep up to date.
+- Depends on item 1.
+
+### 35. Notebooks and CSV files
+
+`.ipynb` files show as JSON and CSV as text.
+
+- Notebooks: cells in order, markdown cells through `renderMarkdown`, code
+  highlighted, outputs limited to text and base64 PNG or JPEG. HTML and
+  JavaScript outputs are never rendered.
+- CSV: a table for files under 1 MB, with a row cap.
+- Why maybe: both are popular, but each is a parser and a renderer to keep up.
+
+### 36. Several users and per-repository access
+
+Basic auth is one shared user. Some setups want a few users, each seeing some
+of the repositories.
+
+- `USERS_FILE` with scrypt hashes and, per user, a list of repository name
+  patterns. The registry filters by the current user, which needs item 9's
+  filter in place.
+- Tricky: every route goes through `findRepo`, which is good, but caches are
+  keyed by repository path and must never answer across users for lists.
+- Why maybe: at that point a proper forge is the better tool.
+- Depends on item 9.
+
+### 37. Login through a reverse proxy
+
+Many people already have a login in front of their services (oauth2-proxy,
+Authelia) that passes the user in a header.
+
+- `AUTH_PROXY_HEADER=X-Forwarded-User`: requests without it are refused, and
+  basic auth is off.
+- Tricky: the header is only trustworthy when the server cannot be reached
+  except through the proxy. Combine with `TRUST_PROXY` from item 5 and accept
+  the header only from the proxy's address.
+- Depends on item 5.
