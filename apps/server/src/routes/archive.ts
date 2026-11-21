@@ -4,6 +4,8 @@ import { archiveStream } from '../git/archive.js';
 import type { RepoRegistry } from '../git/repos.js';
 import { resolveCommit } from '../git/resolve.js';
 import { GitError } from '../git/run.js';
+import { markTimedOut } from '../lib/error-handler.js';
+import { requestContext } from '../lib/request-context.js';
 import { Semaphore } from '../lib/semaphore.js';
 import { findRepo } from './repos.js';
 
@@ -22,11 +24,15 @@ export async function archiveRoutes(
   {
     registry,
     limits,
-  }: { registry: RepoRegistry; limits: { maxConcurrent: number; timeoutMs: number } },
+  }: {
+    registry: RepoRegistry;
+    limits: { maxConcurrent: number; timeoutMs: number; queueTimeoutMs: number };
+  },
 ) {
   // Archives stream for as long as the download takes, so they get their own
   // small limit instead of holding git slots for minutes.
-  const slots = new Semaphore(limits.maxConcurrent, 2_000);
+  // They wait for a slot as long as git calls do (GIT_QUEUE_TIMEOUT_MS).
+  const slots = new Semaphore(limits.maxConcurrent, limits.queueTimeoutMs);
 
   /** The files at a ref, as a zip or tarball, inside a "<repo>-<ref>/" folder. */
   app.get('/repos/:repo/archive', async (request, reply) => {
@@ -36,7 +42,7 @@ export async function archiveRoutes(
     const format = FORMATS[query.format];
 
     const label = `${repo.name}-${ref.replace(/[^A-Za-z0-9._-]+/g, '-')}`;
-    const release = await slots.acquire();
+    const release = await slots.acquire(requestContext.getStore()?.signal);
     let stream;
     try {
       stream = await archiveStream(repo, commit, label, query.format);
@@ -48,6 +54,9 @@ export async function archiveRoutes(
     // Stop git when the download takes too long or the client goes away.
     const timer = setTimeout(() => {
       request.log.warn({ repo: repo.name }, 'archive timed out');
+      // If nothing was sent yet, the error handler answers 504 for this
+      // request whatever error the stream ends with.
+      markTimedOut(request);
       stream.destroy(new GitError(['archive'], null, 'archive timed out', { timedOut: true }));
     }, limits.timeoutMs);
     stream.once('close', () => {

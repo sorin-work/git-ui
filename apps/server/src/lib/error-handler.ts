@@ -4,6 +4,17 @@ import { GitError } from '../git/run.js';
 import { HttpError } from './errors.js';
 import { BusyError } from './semaphore.js';
 
+const timedOutRequests = new WeakSet<object>();
+
+/**
+ * Marks a request as stopped by its own time limit. A stream destroyed by a
+ * timer does not always reach the error handler with the error it was
+ * destroyed with, so the request itself carries the reason.
+ */
+export function markTimedOut(request: FastifyRequest) {
+  timedOutRequests.add(request);
+}
+
 function send(reply: FastifyReply, status: number, code: string, message: string, extra = {}) {
   return reply.status(status).send({ error: { code, message, ...extra } });
 }
@@ -29,8 +40,8 @@ export function errorHandler(
   if (error instanceof GitError && error.isNotFound) {
     return send(reply, 404, 'not_found', 'No such revision or path in this repository');
   }
-  if (error instanceof GitError && error.timedOut) {
-    request.log.warn({ args: error.args }, 'git timed out');
+  if ((error instanceof GitError && error.timedOut) || timedOutRequests.has(request)) {
+    request.log.warn({ args: error instanceof GitError ? error.args : undefined }, 'git timed out');
     return send(
       reply,
       504,
