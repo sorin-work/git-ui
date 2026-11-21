@@ -58,24 +58,72 @@ function isInside(parent: string, child: string): boolean {
 /** git follows alternates of alternates up to this depth, and so do we. */
 const MAX_ALTERNATE_DEPTH = 5;
 
-/** Parts of a git directory that could be symlinks to another repository's. */
-const LINKABLE = [
-  'HEAD',
-  'packed-refs',
-  'refs',
-  'refs/heads',
-  'refs/tags',
-  'objects',
-  'objects/info',
-  'objects/pack',
-];
+/** Files of a git directory that git reads and that could be links elsewhere. */
+const FILES = ['HEAD', 'config', 'index', 'packed-refs', 'shallow', 'info/grafts'];
+
+/** Folders walked in full, so no link anywhere inside them leads out. */
+const FOLDERS = ['refs', 'logs', 'objects'];
+
+/**
+ * Limits for walking one repository. A repository with more loose objects
+ * than this is refused rather than slowing down every request (`git gc`
+ * packs them).
+ */
+export const WALK_LIMITS = { entries: 100_000, ms: 3_000 };
+
+interface Walk {
+  base: string;
+  entries: number;
+  deadline: number;
+  /** Real paths already walked, so links inside cannot loop. */
+  seen: Set<string>;
+}
+
+/**
+ * Walks `dir` (relative name `label`) without following links blindly: a
+ * symlink, file or folder, must resolve inside REPOS_DIR, and a linked
+ * folder is walked at its real path too. Returns a reason or null.
+ */
+async function walk(state: Walk, dir: string, label: string): Promise<string | null> {
+  const real = await realpath(dir).catch(() => null);
+  if (real === null) return null; // missing: git will not read it either
+  if (!isInside(state.base, real)) return `${label} is a link out of REPOS_DIR`;
+  if (state.seen.has(real)) return null;
+  state.seen.add(real);
+
+  const entries = await readdir(real, { withFileTypes: true }).catch(() => null);
+  if (entries === null) return null; // a file, not a folder
+  for (const entry of entries) {
+    state.entries += 1;
+    if (state.entries > WALK_LIMITS.entries || Date.now() > state.deadline) {
+      return 'it has too many files to check under refs, logs and objects (run git gc)';
+    }
+    const child = path.join(real, entry.name);
+    const name = `${label}/${entry.name}`;
+    if (entry.isSymbolicLink()) {
+      const target = await realpath(child).catch(() => null);
+      if (target === null) return `${name} is a link that leads nowhere`;
+      if (!isInside(state.base, target)) return `${name} is a link out of REPOS_DIR`;
+      const reason = await walk(state, target, name);
+      if (reason) return reason;
+    } else if (entry.isDirectory()) {
+      const reason = await walk(state, child, name);
+      if (reason) return reason;
+    }
+  }
+  return null;
+}
 
 /**
  * Everything git would read for a repository must be inside `base`: its git
  * directory, the main repository of a linked worktree (`commondir`), every
- * alternate object store, and the refs and objects even when they are
- * symlinks. Returns why a repository is refused, or null when it is fine.
- * `base` must be a real path.
+ * alternate object store, and every file and folder under refs, logs and
+ * objects even when they are symlinks. Returns why a repository is refused,
+ * or null when it is fine. `base` must be a real path.
+ *
+ * This is defence in depth, not a boundary: the check and git's reads are
+ * not atomic, so REPOS_DIR itself must only be writable by people trusted
+ * to read what the server can read.
  */
 export async function escapeReason(base: string, gitDir: string): Promise<string | null> {
   const real = await realpath(gitDir).catch(() => null);
@@ -89,26 +137,32 @@ export async function escapeReason(base: string, gitDir: string): Promise<string
     if (!target || !isInside(base, target)) return 'its commondir is outside REPOS_DIR';
     common = target;
   }
+  const dirs = common === real ? [real] : [real, common];
 
-  for (const part of LINKABLE) {
-    const dir = part === 'HEAD' ? real : common;
-    const target = await realpath(path.join(dir, part)).catch(() => null);
-    if (target && !isInside(base, target)) return `${part} is a link out of REPOS_DIR`;
+  for (const dir of dirs) {
+    for (const file of FILES) {
+      const target = await realpath(path.join(dir, file)).catch(() => null);
+      if (target && !isInside(base, target)) return `${file} is a link out of REPOS_DIR`;
+    }
   }
 
-  // Loose object folders (objects/ab) could be links too.
-  const objects = path.join(common, 'objects');
-  const entries = await readdir(objects, { withFileTypes: true }).catch(() => []);
-  for (const entry of entries) {
-    if (!entry.isSymbolicLink()) continue;
-    const target = await realpath(path.join(objects, entry.name)).catch(() => null);
-    if (target && !isInside(base, target))
-      return `objects/${entry.name} is a link out of REPOS_DIR`;
+  const state: Walk = {
+    base,
+    entries: 0,
+    deadline: Date.now() + WALK_LIMITS.ms,
+    seen: new Set(),
+  };
+  for (const dir of dirs) {
+    for (const folder of FOLDERS) {
+      const reason = await walk(state, path.join(dir, folder), folder);
+      if (reason) return reason;
+    }
   }
 
-  // Alternates add another object store; relative entries are relative to
-  // the objects folder that lists them.
-  let stores = [objects];
+  // Alternates add another object store. Relative entries are relative to
+  // the real path of the objects folder that lists them, as in git.
+  const objects = await realpath(path.join(common, 'objects')).catch(() => null);
+  let stores = objects ? [objects] : [];
   for (let depth = 0; depth < MAX_ALTERNATE_DEPTH && stores.length > 0; depth++) {
     const next: string[] = [];
     for (const store of stores) {
