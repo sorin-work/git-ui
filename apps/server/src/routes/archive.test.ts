@@ -109,4 +109,68 @@ describe('archive route', () => {
     expect([500, 'cut off']).toContain(outcome);
     await rm(corrupt.path, { recursive: true });
   });
+
+  it.each(['tar.gz', 'zip'])(
+    'refuses a %s of a tree that would unpack outside its folder',
+    async (format) => {
+      const name = `evil-${format.replace('.', '')}`;
+      const evil = await TestRepo.create(root.dir, name);
+      await evil.commit('one', { 'a.txt': 'a\n' });
+      const blob = (await evil.run(['rev-parse', 'HEAD:a.txt'])).trim();
+      // git never writes such a tree; build it by hand.
+      const file = path.join(root.dir, `${name}.tree`);
+      await writeFile(
+        file,
+        Buffer.concat([Buffer.from('100644 ../escape\0'), Buffer.from(blob, 'hex')]),
+      );
+      const tree = (
+        await evil.run(['hash-object', '-t', 'tree', '--literally', '-w', file])
+      ).trim();
+      const commit = (
+        await evil.run([
+          '-c',
+          'user.name=T',
+          '-c',
+          'user.email=t@e.st',
+          'commit-tree',
+          tree,
+          '-m',
+          'evil',
+        ])
+      ).trim();
+      const res = await app.inject(`/api/repos/${name}/archive?format=${format}&ref=${commit}`);
+      expect(res.statusCode).toBe(422);
+      expect(res.json().error.code).toBe('unsafe_tree');
+      await rm(evil.path, { recursive: true });
+    },
+  );
+
+  it('refuses an archive with a symlink to an absolute path', async () => {
+    const abs = await TestRepo.create(root.dir, 'abs-link');
+    await symlink('/etc/passwd', path.join(abs.path, 'passwd'));
+    await abs.commit('link');
+    const res = await app.inject('/api/repos/abs-link/archive?format=tar.gz');
+    expect(res.statusCode).toBe(422);
+    expect(res.json().error.message).toMatch(/absolute path/);
+    await rm(abs.path, { recursive: true });
+  });
+
+  it('archives commits dated outside what zip and tar fields hold', async () => {
+    const future = await TestRepo.create(root.dir, 'future');
+    await future.commit('far ahead', { 'a.txt': 'a\n' }, { date: '2200-01-01T00:00:00Z' });
+    const out = await tempDir();
+    try {
+      for (const format of ['zip', 'tar.gz']) {
+        const res = await app.inject(`/api/repos/future/archive?format=${format}`);
+        expect(res.statusCode).toBe(200);
+        const file = path.join(out.dir, `f.${format}`);
+        await writeFile(file, res.rawPayload);
+        if (format === 'zip') await run('unzip', ['-tq', file]);
+        else await run('tar', ['-tzf', file]);
+      }
+    } finally {
+      await out.cleanup();
+      await rm(future.path, { recursive: true });
+    }
+  });
 });
