@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { GitError } from '../git/run.js';
 import { errorHandler } from './error-handler.js';
 import { notFound } from './errors.js';
+import { BusyError } from './semaphore.js';
 
 function appThatThrows(error: unknown) {
   const app = Fastify();
@@ -22,6 +23,7 @@ describe('errorHandler', () => {
     [new GitError(['show'], null, '', { outputTooLarge: true }), 413, 'too_large'],
     [new GitError(['show'], 128, 'fatal: something else'), 500, 'internal_error'],
     [new Error('secret details'), 500, 'internal_error'],
+    [new BusyError(), 503, 'busy'],
   ])('maps %s to %i', async (error, status, code) => {
     const res = await appThatThrows(error).inject('/boom');
     expect(res.statusCode).toBe(status);
@@ -34,5 +36,10 @@ describe('errorHandler', () => {
     const res = await appThatThrows(result.error).inject('/boom');
     expect(res.statusCode).toBe(400);
     expect(res.json().error.issues[0].path).toBe('ref');
+  });
+
+  it('asks a busy client to retry later', async () => {
+    const res = await appThatThrows(new BusyError()).inject('/boom');
+    expect(res.headers['retry-after']).toBe('2');
   });
 });

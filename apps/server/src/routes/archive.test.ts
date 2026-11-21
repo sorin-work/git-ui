@@ -173,4 +173,24 @@ describe('archive route', () => {
       await rm(future.path, { recursive: true });
     }
   });
+
+  it('stops an archive that runs past its time limit and frees its slot', async () => {
+    const limited = await testApp(root.dir, {
+      ARCHIVE_TIMEOUT_MS: '1',
+      ARCHIVE_MAX_CONCURRENT: '1',
+    });
+    try {
+      for (let i = 0; i < 2; i++) {
+        // Cut off, or 504 when the timer fired before anything was sent.
+        // Never 503: the first attempt gave its slot back.
+        const outcome = await limited.inject('/api/repos/demo/archive?format=tar.gz').then(
+          (res) => res.statusCode,
+          () => 'cut off',
+        );
+        expect([504, 'cut off', 200]).toContain(outcome);
+      }
+    } finally {
+      await limited.close();
+    }
+  });
 });

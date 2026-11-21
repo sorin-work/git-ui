@@ -5,7 +5,17 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { blame } from './blame.js';
 import { commitDiff } from './commit.js';
-import { git, GitError, gitBuffer, invocation, withSafetyFlags } from './run.js';
+import { BusyError } from '../lib/semaphore.js';
+import {
+  configureGit,
+  git,
+  GitError,
+  gitBuffer,
+  gitSlots,
+  gitVersion,
+  invocation,
+  withSafetyFlags,
+} from './run.js';
 
 describe('git runner', () => {
   let dir: string;
@@ -135,5 +145,38 @@ describe('git environment', () => {
     expect(args.indexOf('core.quotepath=off')).toBeGreaterThan(args.indexOf('color.diff=never'));
     expect(env.GIT_CONFIG_GLOBAL).toBe('/dev/null');
     expect(env.HOME).toBeUndefined();
+  });
+});
+
+describe('git process limit', () => {
+  let dir: string;
+  const saved = { limit: gitSlots.limit, waitMs: gitSlots.waitMs };
+
+  beforeAll(async () => {
+    dir = await mkdtemp(path.join(tmpdir(), 'git-ui-slots-'));
+    await git(dir, ['init', '--quiet', '--initial-branch=main']);
+  });
+
+  afterAll(async () => {
+    configureGit({ maxProcesses: saved.limit, queueTimeoutMs: saved.waitMs });
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it('makes calls wait for a free slot and fails them when it takes too long', async () => {
+    configureGit({ maxProcesses: 1, queueTimeoutMs: 50 });
+    // hash-object --stdin waits for input until its own timeout kills it.
+    const slow = git(dir, ['hash-object', '--stdin'], { timeoutMs: 500 }).catch((e) => e);
+    const waiting = await git(dir, ['rev-parse', '--git-dir']).catch((e) => e);
+    expect(waiting).toBeInstanceOf(BusyError);
+    expect((await slow).timedOut).toBe(true);
+    // The killed call gave its slot back.
+    expect((await git(dir, ['rev-parse', '--git-dir'])).trim()).toBe('.git');
+    expect(gitSlots.stats).toEqual({ running: 0, waiting: 0 });
+  });
+
+  it('knows the installed git version', async () => {
+    const [major, minor] = await gitVersion();
+    expect(major).toBeGreaterThanOrEqual(2);
+    expect(minor).toBeGreaterThanOrEqual(0);
   });
 });
