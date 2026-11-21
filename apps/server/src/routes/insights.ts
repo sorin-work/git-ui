@@ -17,10 +17,11 @@ export async function insightsRoutes(
     const repo = await findRepo(registry, request.params);
     const query = insightsQuery.parse(request.query);
     const { ref, kind, commit } = await resolveCommit(repo, query.ref);
-    const [people, weeks] = await Promise.all([
-      contributors(repo, commit),
-      weeklyActivity(repo, commit),
-    ]);
+    // A full walk of the history for the contributors; cached, since it
+    // never changes for a commit.
+    const [people, weeks] = await cached(['insights', repo.path, commit], () =>
+      Promise.all([contributors(repo, commit), weeklyActivity(repo, commit)]),
+    );
     return { ref, kind, commit, contributors: people, activity: weeks };
   });
 

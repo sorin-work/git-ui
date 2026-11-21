@@ -54,20 +54,44 @@ export function bucketByWeek(timestamps: number[], until: number, weeks = 52): W
   }));
 }
 
+/** The largest number in a list of any length (spreading a long list into Math.max throws). */
+export function newest(times: number[]): number {
+  let max = -Infinity;
+  for (const time of times) if (time > max) max = time;
+  return max;
+}
+
+const WEEK_SECONDS = 7 * 24 * 60 * 60;
+
 /**
  * Weekly commit counts for the year leading up to the newest commit, so a
  * repository that has been quiet for a while still shows its last active year.
+ * Only that year is read: the tip's commit date stands in for the newest
+ * one, and `--max-age` stops the walk there instead of going through the
+ * whole history.
  */
 export async function weeklyActivity(
   repo: RepoLocation,
   commit: string,
   weeks = 52,
 ): Promise<WeekActivity[]> {
-  const out = await git(repo, ['log', '--format=%ct', '--end-of-options', commit, '--']);
+  const tip = Number(
+    (await git(repo, ['log', '-1', '--format=%ct', '--end-of-options', commit, '--'])).trim(),
+  );
+  if (!Number.isFinite(tip)) return bucketByWeek([], Date.now(), weeks);
+  const out = await git(repo, [
+    'log',
+    '--format=%ct',
+    // One week of slack for the bucket the year starts in.
+    `--max-age=${tip - (weeks + 1) * WEEK_SECONDS}`,
+    '--end-of-options',
+    commit,
+    '--',
+  ]);
   const times = out
     .split('\n')
     .filter(Boolean)
     .map((t) => Number(t) * 1000);
-  if (times.length === 0) return bucketByWeek([], Date.now(), weeks);
-  return bucketByWeek(times, Math.max(...times), weeks);
+  // A commit dated after the tip (a skewed clock) still moves the year.
+  return bucketByWeek(times, Math.max(tip * 1000, newest(times)), weeks);
 }
