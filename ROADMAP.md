@@ -819,17 +819,26 @@ Authelia) that passes the user in a header.
 Every git call now pins the config that could start a program or change the
 output (`PINNED_CONFIG` in `server/git/run.ts`) and runs with an empty
 environment plus `PATH` and `TMPDIR`, with the system, user and attribute
-config switched off and replace objects ignored. Archives list the
-repository's filter drivers and blank them, git only writes plain tar (the
-server gzips it, because `tar.<format>.command` can replace gzip), and a zip
-is refused with 409 `unsafe_config` when the repository redefines `zip` or
-names a filter that `-c` cannot reach. `apps/server/test/hostile.ts` builds a
-repository that sets all of this and the route tests call every endpoint on
-it. Differences: the git minimum stays at 2.30, because `HOME` is not passed
-at all, so older git finds no user config either; `blame.ignoreRevsFile` is a
-list `-c` cannot clear, so blame gets `--no-ignore-revs-file` instead;
-`GIT_NO_REPLACE_OBJECTS` is set; `grep` also gets `--no-textconv`;
-`core.sshCommand` and `format.signatureFile` are not pinned because no read
-command uses them (item 15 has to pin the latter). Still open: `include.path`
-can make git read any file the server can read as config, which only reveals
-whether it exists.
+config switched off and replace objects ignored. Archives no longer use
+`git archive`: the server reads the files with `ls-tree` and
+`cat-file --batch`, which never look at attributes, and writes the tar or zip
+itself, so neither filter drivers nor `tar.<format>.command` (which can
+replace the zip and gzip writers, found while testing) can run, however the
+config changes during a download. The end of an archive is written only after
+git exited cleanly, so a failure halfway cuts the download off.
+`apps/server/test/hostile.ts` builds repositories that set all of this, with
+OpenPGP, SSH and X.509 signatures and once through `include.path`, and the
+route tests call every endpoint on them. Differences: `export-ignore` and
+`export-subst` are no longer applied, and a zip over 65,534 entries or about
+4 GB is a 413 (no zip64). The git minimum stays at 2.30, because `HOME` is
+not passed at all, so older git finds no user config either.
+`blame.ignoreRevsFile` is a list `-c` cannot clear, so blame gets
+`--no-ignore-revs-file` instead. `GIT_NO_REPLACE_OBJECTS` is set, `grep`
+also gets `--no-textconv` and `core.attributesFile` is pinned. Planned keys I
+did not pin: `core.sshCommand` and `diff.external` (no read command uses the
+first, `--no-ext-diff` covers the second), `format.signatureFile` (item 15
+has to pin it with format-patch), and `core.quotePath`,
+`grep.patternType`, `grep.lineNumber` and `log.decorate`, which are harmless
+because the callers pass explicit flags or formats that win over them. Still
+open: `include.path` can make git read any file the server can read as
+config, which only reveals whether it exists.

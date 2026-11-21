@@ -5,13 +5,15 @@
 ### Security
 
 - A repository's config can no longer make git run a program: signature
-  checks, the gpg programs and the archive filter and compression commands
-  are switched off, and git starts with a clean environment without the
-  host's config
+  checks and the gpg programs are switched off, and git starts with a clean
+  environment without the host's config
 - Repository config can no longer change git's output (colors, diff prefixes,
   encodings) and break pages
-- tar.gz downloads are compressed by the server; a zip is refused (409) when
-  the repository redefines the zip format
+- Zip and tar.gz downloads are built by the server from git's objects instead
+  of `git archive`, which runs filters and compressors from the repository's
+  config. `export-ignore` and `export-subst` are no longer applied, and a
+  download that fails halfway is cut off instead of ending as a valid but
+  incomplete archive
 
 ## 1.0.0 (2026-11-03)
 
