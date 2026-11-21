@@ -1,5 +1,4 @@
-import { execFile, spawn } from 'node:child_process';
-import type { Readable } from 'node:stream';
+import { execFile, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 
 /**
  * Config set on every invocation with `-c`, which beats anything in the
@@ -41,6 +40,7 @@ export const PINNED_CONFIG: readonly (readonly [string, string])[] = [
 
   // Files outside the repository that config could point at. (blame's
   // ignoreRevsFile is a list that `-c` cannot clear; see NO_PROGRAM_FLAGS.)
+  ['core.attributesFile', '/dev/null'],
   ['diff.orderFile', '/dev/null'],
   ['mailmap.file', '/dev/null'],
 ];
@@ -217,16 +217,13 @@ export function gitBuffer(repoPath: string, args: readonly string[], options: Gi
 }
 
 /**
- * Streams git's stdout instead of buffering it, for output that can be large
- * (archives). The stream errors with a GitError if git fails.
+ * Starts git with stdin and stdout as pipes, for `cat-file --batch`. The
+ * caller reads stdout, writes stdin and checks the exit code itself.
  */
-export function gitStream(repoPath: string, args: readonly string[]): Readable {
+export function gitProcess(
+  repoPath: string,
+  args: readonly string[],
+): ChildProcessWithoutNullStreams {
   const call = invocation(repoPath, args);
-  const child = spawn('git', call.args, { cwd: repoPath, env: call.env, windowsHide: true });
-  let stderr = '';
-  child.stderr.on('data', (chunk: Buffer) => (stderr += chunk.toString()));
-  child.on('close', (code) => {
-    if (code !== 0) child.stdout.destroy(new GitError(args, code, stderr));
-  });
-  return child.stdout;
+  return spawn('git', call.args, { cwd: repoPath, env: call.env, windowsHide: true });
 }
