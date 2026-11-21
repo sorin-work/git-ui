@@ -1,3 +1,5 @@
+import { requestContext } from './request-context.js';
+
 /**
  * A small least-recently-used cache for promises. Everything git returns for
  * a full commit sha (trees, files, diffs, blame) never changes, so it can be
@@ -41,7 +43,12 @@ export class LruCache<T> {
 /** Shared cache for git results keyed by repository path, commit sha and more. */
 export const gitCache = new LruCache<unknown>(500);
 
-/** Caches `load` under a key made of `parts`; only use for immutable (sha-addressed) data. */
+/**
+ * Caches `load` under a key made of `parts`; only use for immutable
+ * (sha-addressed) data. The load runs outside the request that started it:
+ * other requests may be waiting for the same promise, so one client going
+ * away must not abort git for all of them.
+ */
 export function cached<T>(parts: readonly (string | number)[], load: () => Promise<T>): Promise<T> {
-  return gitCache.get(JSON.stringify(parts), load) as Promise<T>;
+  return gitCache.get(JSON.stringify(parts), () => requestContext.exit(load)) as Promise<T>;
 }

@@ -8,6 +8,16 @@ describe('renderMarkdown', () => {
     expect(html).toContain('<table>');
   });
 
+  it('removes <style> elements and style attributes', () => {
+    const html = renderMarkdown(
+      '<style>body { display: none }</style>\n\n<div style="position:fixed;inset:0">cover</div>',
+    );
+    expect(html).not.toContain('<style');
+    expect(html).not.toContain('style=');
+    expect(html).not.toContain('display: none');
+    expect(html).toContain('cover');
+  });
+
   it('removes scripts, event handlers and javascript: links', () => {
     const html = renderMarkdown(
       '<script>alert(1)</script>\n\n<img src="x.png" onerror="alert(2)">\n\n[click](javascript:alert(3))',

@@ -12,7 +12,10 @@ interface Waiter {
 }
 
 function abortError(signal: AbortSignal): Error {
-  return signal.reason instanceof Error ? signal.reason : new Error('Aborted');
+  if (signal.reason instanceof Error) return signal.reason;
+  const error = new Error('Aborted');
+  error.name = 'AbortError';
+  return error;
 }
 
 /**

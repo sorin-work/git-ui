@@ -38,12 +38,12 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
     const controller = new AbortController();
     controllers.set(request, controller);
     reply.raw.once('close', () => {
-      if (!reply.raw.writableFinished) controller.abort(new Error('The client went away'));
+      if (!reply.raw.writableFinished) controller.abort();
     });
     requestContext.run({ signal: controller.signal }, done);
   });
   app.addHook('onError', async (request) => {
-    controllers.get(request)?.abort(new Error('The request failed'));
+    controllers.get(request)?.abort();
   });
 
   app.setErrorHandler(errorHandler);
