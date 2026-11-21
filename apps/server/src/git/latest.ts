@@ -11,7 +11,7 @@ interface LogRecord {
 }
 
 /**
- * Parses `git log -z --name-only --format=%x1e%H%x1f%s%x1f%an%x1f%aI`:
+ * Parses `git log -z --name-only --format=%x1e%H%x1f%s%x1f%aN%x1f%aI`:
  * each record is "\x1e<header>\0\n<file>\0<file>\0…".
  */
 export function parseNameOnlyLog(output: string): LogRecord[] {
@@ -63,7 +63,7 @@ export async function latestCommits(
     'log',
     '-z',
     '--name-only',
-    '--format=%x1e%H%x1f%s%x1f%an%x1f%aI',
+    '--format=%x1e%H%x1f%s%x1f%aN%x1f%aI',
     `--max-count=${MAX_WALK}`,
     '--end-of-options',
     commit,

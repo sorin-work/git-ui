@@ -16,7 +16,8 @@ export interface CommitSummary {
   subject: string;
 }
 
-const FIELDS = ['%H', '%h', '%P', '%an', '%ae', '%aI', '%cn', '%ce', '%cI', '%s'];
+// %aN and friends apply .mailmap, as shortlog (contributors) and blame do.
+const FIELDS = ['%H', '%h', '%P', '%aN', '%aE', '%aI', '%cN', '%cE', '%cI', '%s'];
 /**
  * Fields are separated by the ASCII unit separator and commits by NUL (`-z`),
  * characters that can't appear in names or subjects. A visible delimiter such

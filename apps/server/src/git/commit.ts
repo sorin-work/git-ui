@@ -22,7 +22,7 @@ export function parseCoAuthors(body: string): { name: string; email: string }[] 
   return people;
 }
 
-const DETAIL_FORMAT = ['%H', '%h', '%P', '%an', '%ae', '%aI', '%cn', '%ce', '%cI', '%s', '%b'].join(
+const DETAIL_FORMAT = ['%H', '%h', '%P', '%aN', '%aE', '%aI', '%cN', '%cE', '%cI', '%s', '%b'].join(
   '%x00',
 );
 

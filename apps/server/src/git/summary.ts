@@ -50,7 +50,7 @@ export async function lastCommit(repo: RepoLocation): Promise<CommitBrief | null
     const out = await git(repo, [
       'log',
       '-1',
-      '--format=%H%x00%s%x00%an%x00%aI',
+      '--format=%H%x00%s%x00%aN%x00%aI',
       '--end-of-options',
       'HEAD',
       '--',
