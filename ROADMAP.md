@@ -49,7 +49,7 @@ still open), and the README, the docs and the CHANGELOG (under an
 
 | #   | Item                                        | Group   | Area        | Size | Depends on |
 | --- | ------------------------------------------- | ------- | ----------- | ---- | ---------- |
-| 1   | Repositories cannot make git run programs   | Next    | security    | M    | -          |
+| 1   | Repositories cannot make git run programs   | Shipped | security    | M    | -          |
 | 2   | Repositories stay inside REPOS_DIR          | Shipped | security    | M    | -          |
 | 3   | Paths and refs that mean one thing          | Next    | security    | S    | -          |
 | 4   | Bounded git work                            | Next    | ops         | M    | -          |
