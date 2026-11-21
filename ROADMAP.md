@@ -714,8 +714,7 @@ Every buffered git call runs under a semaphore (`server/lib/semaphore.ts`,
 `gitSlots` in `server/git/run.ts`): `GIT_MAX_PROCESSES` at once, twice the
 CPUs by default, and a call that waited `GIT_QUEUE_TIMEOUT_MS` (10 seconds)
 gets a `BusyError`, answered as 503 `busy` with `Retry-After`. Downloads
-have their own semaphore (`ARCHIVE_MAX_CONCURRENT`, 2, waiting at most 2
-seconds), a time limit (`ARCHIVE_TIMEOUT_MS`, ten minutes) and are destroyed,
+have their own semaphore (`ARCHIVE_MAX_CONCURRENT`, 2), a time limit (`ARCHIVE_TIMEOUT_MS`, ten minutes) and are destroyed,
 which kills `cat-file`, when the response closes early. Branches count ahead
 and behind with one `for-each-ref --format=%(ahead-behind:...)` from git
 2.41 (detected once with `git --version`), and with one `rev-list` per
@@ -725,7 +724,11 @@ in `BlobReader`, and the `cat-file` processes of a download are counted by
 the download limit, not by `gitSlots`, so a slow download cannot hold git
 slots for minutes. One queue for everything, as planned; whether list-style
 pages need their own waits for numbers from item 28. No per-client rate
-limits.
+limits. A follow-up after review: each request carries an `AbortSignal`
+(AsyncLocalStorage), so a request whose client left, or that failed, takes
+its queued git calls out of the queue and kills the running ones; downloads
+wait for a slot as long as `GIT_QUEUE_TIMEOUT_MS`; and a download stopped by
+its time limit before the first byte answers 504.
 
 ### 5. Login throttling and security headers
 

@@ -10,6 +10,8 @@
   `ARCHIVE_TIMEOUT_MS` or when the client goes away
 - The branches page counts ahead and behind in one git call on git 2.41 and
   later
+- git calls of a request stop when the client goes away or the request fails,
+  and downloads wait for a slot as long as `GIT_QUEUE_TIMEOUT_MS`
 
 ### Changed
 

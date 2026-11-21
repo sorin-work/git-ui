@@ -104,7 +104,12 @@ All git access goes through `src/git/run.ts`:
 - At most `GIT_MAX_PROCESSES` git processes run at once (`gitSlots`, a
   semaphore in `src/lib/semaphore.ts`); the rest wait in line, and a call
   that waited `GIT_QUEUE_TIMEOUT_MS` fails with a `BusyError`, which the
-  error handler turns into 503 with `Retry-After`. Downloads have their own
+  error handler turns into 503 with `Retry-After`. Each request carries an
+  `AbortSignal` (`src/lib/request-context.ts`, an AsyncLocalStorage set in
+  an `onRequest` hook) that `run()` picks up: it aborts when the client goes
+  away or the request fails, so the request's queued git calls leave the
+  queue and running ones are killed, including the other calls of a page
+  that runs several at once. Downloads have their own
   limit (`ARCHIVE_MAX_CONCURRENT`) and time limit (`ARCHIVE_TIMEOUT_MS`), and
   are stopped, with git, when the client goes away. The branches page counts
   ahead and behind for every branch in one `for-each-ref` walk

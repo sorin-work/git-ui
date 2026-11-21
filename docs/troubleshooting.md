@@ -61,8 +61,7 @@ search a single folder.
 git-ui runs at most `GIT_MAX_PROCESSES` git processes at once (twice the
 number of CPUs by default) and at most `ARCHIVE_MAX_CONCURRENT` downloads
 (2). A request that waits longer than `GIT_QUEUE_TIMEOUT_MS` (10 seconds)
-for a free git process, or 2 seconds for a download slot, gets a 503 with
-`Retry-After`. On a big machine, or when many people use it, raise the
+for a free git process or download slot gets a 503 with `Retry-After`. On a big machine, or when many people use it, raise the
 limits; on a small one, a few heavy pages at once (the repository list of
 hundreds of repositories, branches without git 2.41) are the usual cause.
 
