@@ -23,6 +23,8 @@ const envSchema = z.object({
     .min(1)
     .default(2 * availableParallelism()),
   GIT_QUEUE_TIMEOUT_MS: z.coerce.number().int().min(0).default(10_000),
+  /** Memory for cached git results (trees, files, diffs, blame), roughly. */
+  CACHE_MAX_MB: z.coerce.number().int().min(0).default(256),
   /** Archive downloads running at once, and how long one may take. */
   ARCHIVE_MAX_CONCURRENT: z.coerce.number().int().min(1).default(2),
   ARCHIVE_TIMEOUT_MS: z.coerce.number().int().min(1).default(600_000),
@@ -46,6 +48,7 @@ export interface Config {
   reposDir: string;
   seedDemo: boolean;
   git: { maxProcesses: number; queueTimeoutMs: number };
+  cacheMaxMb: number;
   archives: { maxConcurrent: number; timeoutMs: number };
   auth: { username: string; password: string } | null;
   trustProxy: TrustProxy;
@@ -85,6 +88,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     seedDemo: e.SEED_DEMO,
     trustProxy: parseTrustProxy(e.TRUST_PROXY),
     git: { maxProcesses: e.GIT_MAX_PROCESSES, queueTimeoutMs: e.GIT_QUEUE_TIMEOUT_MS },
+    cacheMaxMb: e.CACHE_MAX_MB,
     archives: { maxConcurrent: e.ARCHIVE_MAX_CONCURRENT, timeoutMs: e.ARCHIVE_TIMEOUT_MS },
     auth:
       e.AUTH_USERNAME && e.AUTH_PASSWORD

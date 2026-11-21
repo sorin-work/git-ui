@@ -2,6 +2,7 @@ import Fastify, { LogController, type FastifyInstance } from 'fastify';
 import type { Config } from './config.js';
 import { RepoRegistry } from './git/repos.js';
 import { configureGit } from './git/run.js';
+import { configureCache } from './lib/cache.js';
 import { requestContext } from './lib/request-context.js';
 import { basicAuth } from './lib/basic-auth.js';
 import { errorHandler } from './lib/error-handler.js';
@@ -28,6 +29,7 @@ export async function buildApp(config: Config): Promise<FastifyInstance> {
   });
 
   configureGit(config.git);
+  configureCache(config.cacheMaxMb);
 
   // Each request gets an AbortSignal that git calls pick up (see
   // lib/request-context.ts). It aborts when the client goes away before the
