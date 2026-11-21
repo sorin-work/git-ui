@@ -43,7 +43,13 @@ export function renderMarkdown(source: string, resolver: LinkResolver = {}): str
     }
   });
   try {
-    return DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
+    // No <style> and no style attributes: a README could otherwise restyle
+    // or cover the whole app. The CSP forbids inline styles as well.
+    return DOMPurify.sanitize(html, {
+      USE_PROFILES: { html: true },
+      FORBID_TAGS: ['style'],
+      FORBID_ATTR: ['style'],
+    });
   } finally {
     DOMPurify.removeHook('afterSanitizeAttributes');
   }
