@@ -62,6 +62,8 @@ in the API changes a repository.
 ### Notes
 
 **History.** `author` and `q` are matched as plain text, case-insensitively.
+Author and committer names and emails have `.mailmap` applied, as in the
+contributors list.
 When `path` is a single file its history follows renames.
 
 **Diffs.** Each file has `status` (`added`, `deleted`, `modified`, `renamed`,

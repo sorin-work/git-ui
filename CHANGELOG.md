@@ -22,6 +22,13 @@
 - API responses that include `ref` also include `kind` (`branch`, `tag` or
   `commit`)
 
+### Fixed
+
+- Insights no longer fail (500) on repositories with very long histories,
+  read only the last year for the activity chart and are cached per commit
+- History, commit pages and the file list apply `.mailmap`, like the
+  contributors list already did
+
 ### Security
 
 - Ten wrong passwords from one address within five minutes lock it out

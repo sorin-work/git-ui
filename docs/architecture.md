@@ -137,14 +137,19 @@ name.
 
 Output formats are chosen to be unambiguous rather than readable:
 
-| Data         | Command                                    | Why                                                  |
-| ------------ | ------------------------------------------ | ---------------------------------------------------- |
-| Trees        | `ls-tree --long -z`                        | NUL separators, so any file name round-trips         |
-| History      | `log -z --format=…%x1f…`                   | Unit-separated fields; subjects can contain anything |
-| Diffs        | `show`/`diff --find-renames`               | Parsed into files, hunks and numbered lines          |
-| Blame        | `blame --porcelain`                        | Commit details appear once, lines reference them     |
-| Search       | `grep -z --line-number -I --fixed-strings` | Literal match, binary files skipped                  |
-| Contributors | `shortlog -sne`, `log --format=%ct`        | Commit times are bucketed into weeks on the server   |
+| Data         | Command                                       | Why                                                         |
+| ------------ | --------------------------------------------- | ----------------------------------------------------------- |
+| Trees        | `ls-tree --long -z`                           | NUL separators, so any file name round-trips                |
+| History      | `log -z --format=…%x1f…`                      | Unit-separated fields; subjects can contain anything        |
+| Diffs        | `show`/`diff --find-renames`                  | Parsed into files, hunks and numbered lines                 |
+| Blame        | `blame --porcelain`                           | Commit details appear once, lines reference them            |
+| Search       | `grep -z --line-number -I --fixed-strings`    | Literal match, binary files skipped                         |
+| Contributors | `shortlog -sne`, `log --format=%ct --max-age` | One year of commit times, bucketed into weeks on the server |
+
+Names in history, commits, blame, the latest commit per file and the
+contributors list all go through `.mailmap` (`%aN`/`%aE` in formats), so one
+person shows up under one name everywhere. Clones read `.mailmap` from their
+working tree, bare repositories from `HEAD`.
 
 Each parser lives next to the command that feeds it in `src/git/` and has unit
 tests with tricky input (quotes, tabs and newlines in names, no newline at end

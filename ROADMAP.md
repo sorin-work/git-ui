@@ -54,7 +54,7 @@ still open), and the README, the docs and the CHANGELOG (under an
 | 3   | Paths and refs that mean one thing          | Shipped | security    | S    | -          |
 | 4   | Bounded git work                            | Shipped | ops         | M    | -          |
 | 5   | Login throttling and security headers       | Shipped | security    | S    | -          |
-| 6   | Insights for long histories                 | Later   | correctness | S    | -          |
+| 6   | Insights for long histories                 | Shipped | correctness | S    | -          |
 | 7   | A cache bounded by size                     | Later   | performance | S    | -          |
 | 8   | A faster repository list                    | Later   | performance | M    | -          |
 | 9   | Choosing which repositories are shown       | Later   | repos       | S    | -          |
@@ -93,32 +93,6 @@ Everything that was here has shipped (see the end of this file). The next
 picks come from Later.
 
 ## Later
-
-### 6. Insights for long histories
-
-`weeklyActivity` in `server/git/insights.ts` reads the commit time of every
-commit in the history and then calls `Math.max(...times)`. Spreading an array
-that large into a call throws `RangeError` in V8 somewhere past a hundred
-thousand elements, so the insights page of a big repository (the Linux kernel,
-but also many company monorepos) is a 500. The route is also not cached, so
-the full `log` and `shortlog` walks run again on every visit.
-
-- Replace the spread with a loop, and stop reading the whole history: the
-  first line of `git log --format=%ct` is the newest commit in practice, so
-  run `git log --since=<that minus 52 weeks>` for the buckets.
-- Cache the result by commit sha, like the languages route does.
-- Names: `shortlog` applies `.mailmap`, while `%an` in `log` does not. The
-  contributors list merges people that the history page shows apart. Use
-  `%aN`/`%aE` in `LOG_FORMAT` and the blame and latest formats, so both agree,
-  and say so in the docs. `mailmap.file` is pinned by item 1; `.mailmap` from
-  the commit itself is what bare repositories use (`mailmap.blob`), and
-  regular clones read it from the working tree. Set `mailmap.blob=<commit>:.mailmap`
-  so both kinds read it from the commit being shown.
-- Tricky: a test cannot build 150,000 commits through `git commit`. Use
-  `git fast-import` with a generated stream, which takes a second or two, or
-  test the bucketing with a large array of timestamps and keep one route test
-  small.
-- Tests: `server/git/insights.test.ts`.
 
 ### 7. A cache bounded by size
 
@@ -748,3 +722,20 @@ resolves the `server` upstream when it checks the config and the build has
 no such host. External README images stay allowed (`img-src https:`) until
 item 23. Still open: the CSP was not checked in a browser against the
 production build.
+
+### 6. Insights for long histories
+
+`weeklyActivity` no longer spreads every commit time into `Math.max` (a
+`RangeError` past about a hundred thousand commits): it reads the tip's
+commit date, then only the year before it with `--max-age`, which stops the
+walk there, and finds the newest time with a loop (`newest`). The insights
+route is cached per commit. History, commit pages, the latest commit per
+file and the repository list use `%aN`/`%aE`/`%cN`/`%cE`, so `.mailmap`
+applies everywhere, as it already did for `shortlog` and blame.
+Differences: `.mailmap` still comes from the working tree for clones and
+from `HEAD` for bare repositories (item 2 pinned that); I did not switch to
+the commit being shown, because that means a different `mailmap.blob` per
+call and cache entries that depend on it. A commit dated after the tip
+(clock skew) still moves the year, but commits older than the tip's year
+that come later in the walk are no longer counted. The test with 150,000
+commits became a unit test of `newest` with 500,000 numbers.
