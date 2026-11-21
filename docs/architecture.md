@@ -162,6 +162,25 @@ single error handler (`src/lib/error-handler.ts`) maps them to the
 `{ error: { code, message } }` shape documented in [api.md](api.md). Only
 timeouts and unexpected errors are logged.
 
+Every API response gets `X-Content-Type-Options: nosniff`, and with a login
+`Cache-Control: private` unless the route set its own. Basic auth
+(`src/lib/basic-auth.ts`) counts failed logins per client address in memory
+(`LoginThrottle`): ten within five minutes and the address gets 429 until
+the window passes, without its passwords being checked. The address is
+`request.ip`, which follows `X-Forwarded-For` only as far as `TRUST_PROXY`
+allows.
+
+The nginx in front of the web app adds a Content-Security-Policy
+(`apps/web/security-headers.conf`): scripts only from the app itself (the
+theme is set by `public/theme.js` instead of an inline script), styles from
+the app plus inline style attributes, images from the app, `data:` and any
+https site (README images), no frames, no plugins, no forms. It also sends
+`Referrer-Policy: same-origin`, so links in a README do not tell other sites
+which repository and branch someone was reading, plus `nosniff`,
+`X-Frame-Options` and a Permissions-Policy that turns everything off. The
+headers live in a snippet included in each location, because nginx drops
+the server block's `add_header` lines in a location that has its own.
+
 Raw file responses get `X-Content-Type-Options: nosniff` and a sandboxing CSP,
 and only raster images and SVG are served with their real type, so a
 committed HTML or SVG file cannot run script on git-ui's origin.

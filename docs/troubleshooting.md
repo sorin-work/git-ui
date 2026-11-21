@@ -113,6 +113,15 @@ a program or change git's output. Aliases, colors, `log.showSignature`, a
 `.mailmap` file named in config, `core.attributesFile` or
 `blame.ignoreRevsFile` have no effect in git-ui.
 
+## "Too many failed logins" (429)
+
+After ten wrong passwords from one address within five minutes, git-ui stops
+checking passwords from that address until the five minutes are over
+(`Retry-After` says how long). Requests without any credentials do not count.
+If everyone is locked out at once, the server sees one address for all
+clients: it is behind a proxy without `TRUST_PROXY`. Docker compose sets
+`TRUST_PROXY=1` for its own nginx; add one for every further proxy.
+
 ## The browser keeps asking for a password
 
 Basic auth is on when both `AUTH_USERNAME` and `AUTH_PASSWORD` are set. Setting

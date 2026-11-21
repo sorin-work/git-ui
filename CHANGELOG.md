@@ -22,6 +22,12 @@
 
 ### Security
 
+- Ten wrong passwords from one address within five minutes lock it out
+  (429); `TRUST_PROXY` makes that work behind a reverse proxy
+- The web app is served with a Content-Security-Policy, `Referrer-Policy:
+same-origin` and other security headers; API responses carry `nosniff`
+  and, with a login, `Cache-Control: private`
+
 - A repository's config can no longer make git run a program: signature
   checks and the gpg programs are switched off, and git starts with a clean
   environment without the host's config

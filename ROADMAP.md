@@ -53,7 +53,7 @@ still open), and the README, the docs and the CHANGELOG (under an
 | 2   | Repositories stay inside REPOS_DIR          | Shipped | security    | M    | -          |
 | 3   | Paths and refs that mean one thing          | Shipped | security    | S    | -          |
 | 4   | Bounded git work                            | Shipped | ops         | M    | -          |
-| 5   | Login throttling and security headers       | Next    | security    | S    | -          |
+| 5   | Login throttling and security headers       | Shipped | security    | S    | -          |
 | 6   | Insights for long histories                 | Later   | correctness | S    | -          |
 | 7   | A cache bounded by size                     | Later   | performance | S    | -          |
 | 8   | A faster repository list                    | Later   | performance | M    | -          |
@@ -89,50 +89,8 @@ still open), and the README, the docs and the CHANGELOG (under an
 
 ## Next
 
-### 5. Login throttling and security headers
-
-Basic auth (`server/lib/basic-auth.ts`) compares in constant time, but there
-is no limit on attempts: a script can guess passwords as fast as the server
-answers. And the web app is served by nginx (`apps/web/nginx.conf`) without
-any security headers. Only raw files get a CSP.
-
-- Throttling: count failed attempts per client address in memory. After 10
-  failures in 5 minutes answer 429 with `Retry-After` until the window passes,
-  without checking the password. Successful logins do not reset other
-  clients. Keep the map bounded (drop the oldest entries past a few thousand
-  addresses).
-- The client address: in docker every request comes from nginx, so the
-  server sees one address and one bad client would lock everyone out. Fastify
-  has `trustProxy`; add `TRUST_PROXY` (off by default, `1` in
-  `docker-compose.yml` for the single nginx hop). Turning it on without a proxy
-  lets clients choose their own address with `X-Forwarded-For`, so the docs
-  must say when to use it.
-- Headers in nginx, for the app shell and assets:
-  `Content-Security-Policy` (`default-src 'self'`, `img-src 'self' data: https:`,
-  `style-src 'self' 'unsafe-inline'` if Vue's style bindings need it,
-  `frame-ancestors 'none'`, `base-uri 'none'`, `form-action 'none'`),
-  `Referrer-Policy: same-origin` (README links would otherwise send repository
-  and branch names to other sites), `X-Content-Type-Options: nosniff`,
-  `Permissions-Policy` with everything off.
-- Tricky: nginx drops all `add_header` lines from the `server` block in any
-  `location` that has its own `add_header`. `/assets/` has one for
-  `Cache-Control`. Put the headers in a snippet included in every location, and
-  test the config with `nginx -t` in the image build.
-- Tricky: the CSP has to match what the app really does: highlight.js output
-  uses classes only, the theme toggle sets an attribute, and the language bar
-  and activity chart use inline `style` widths. Check the production build in
-  a browser with the CSP on, not only the dev server, which does not use
-  nginx.
-- API responses: `X-Content-Type-Options: nosniff` on JSON too, and
-  `Cache-Control: private` when auth is on, so a shared proxy never keeps an
-  authenticated answer.
-- Undecided: whether README images from other sites stay allowed
-  (`img-src https:`). They leak the reader's address to that site. Item 23
-  makes that a setting; until then I keep them working.
-- Tests: `server/lib/basic-auth.test.ts` for the counter, the 429, the window
-  and `/api/health` staying open; an `app.test.ts` case with `TRUST_PROXY`.
-  The nginx part has no automated test today; a `docker build` of the web
-  image runs `nginx -t`.
+Everything that was here has shipped (see the end of this file). The next
+picks come from Later.
 
 ## Later
 
@@ -768,3 +726,22 @@ the download limit, not by `gitSlots`, so a slow download cannot hold git
 slots for minutes. One queue for everything, as planned; whether list-style
 pages need their own waits for numbers from item 28. No per-client rate
 limits.
+
+### 5. Login throttling and security headers
+
+`LoginThrottle` in `server/lib/basic-auth.ts` counts wrong passwords per
+`request.ip`: ten in five minutes and that address gets 429 with
+`Retry-After` until the window passes, without its passwords being checked;
+requests without credentials do not count, a right password clears the
+address, and at most 5,000 addresses are kept. `TRUST_PROXY` (off by default,
+`1` in docker compose) is passed to Fastify, a hop count as a trust function.
+nginx sends a CSP, `Referrer-Policy: same-origin`, `nosniff`,
+`X-Frame-Options: DENY` and a Permissions-Policy from a snippet included in
+each location; the inline theme script moved to `public/theme.js` so
+`script-src 'self'` holds. The API adds `nosniff`, and `Cache-Control:
+private` with a login. Differences: `X-Frame-Options` and `object-src 'none'`
+are extra. I did not add `nginx -t` to the image build, because nginx
+resolves the `server` upstream when it checks the config and the build has
+no such host. External README images stay allowed (`img-src https:`) until
+item 23. Still open: the CSP was not checked in a browser against the
+production build.
