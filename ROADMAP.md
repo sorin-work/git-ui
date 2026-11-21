@@ -734,10 +734,13 @@ walk there, and finds the newest time with a loop (`newest`). The insights
 route is cached per commit. History, commit pages, the latest commit per
 file and the repository list use `%aN`/`%aE`/`%cN`/`%cE`, so `.mailmap`
 applies everywhere, as it already did for `shortlog` and blame.
-Differences: `.mailmap` still comes from the working tree for clones and
-from `HEAD` for bare repositories (item 2 pinned that); I did not switch to
-the commit being shown, because that means a different `mailmap.blob` per
-call and cache entries that depend on it. A commit dated after the tip
+After review, the `author` filter matches mapped names (`--use-mailmap`,
+`log.mailmap=true`), and every repository reads `.mailmap` from `HEAD`: the
+work tree of every git call is now an empty folder of the server's own, so a
+clone's checked-out `.mailmap` (a symlink out of `REPOS_DIR` is followed by
+git before 2.32) is never read. Differences: `.mailmap` comes from `HEAD`,
+not from the commit being shown, because that means a different
+`mailmap.blob` per call and cache entries that depend on it. A commit dated after the tip
 (clock skew) still moves the year, but commits older than the tip's year
 that come later in the walk are no longer counted. The test with 150,000
 commits became a unit test of `newest` with 500,000 numbers.

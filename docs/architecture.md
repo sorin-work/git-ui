@@ -90,12 +90,16 @@ All git access goes through `src/git/run.ts`:
   attribute files. Includes only add config, which is pinned where it
   matters, so all they reveal is whether a file exists.
   `core.attributesFile` is pinned to `/dev/null`.
-- git runs with `GIT_DIR` set to the checked git directory and `GIT_WORK_TREE`
-  to the repository folder. There is no discovery, so a repository that
+- git runs with `GIT_DIR` set to the checked git directory and
+  `GIT_WORK_TREE` (and its working directory) set to an empty folder of the
+  server's own (`emptyWorkTree`). There is no discovery, so a repository that
   disappears between the listing and the call is an error rather than
-  whatever repository sits further up, and `core.worktree` in a repository's
-  config cannot point git at a folder elsewhere. Bare repositories keep
-  reading `.mailmap` from `HEAD`.
+  whatever repository sits further up, `core.worktree` in a repository's
+  config cannot point git at a folder elsewhere, and no file of a checkout
+  is ever read: nothing git-ui runs needs a work tree. `.mailmap` comes from
+  `HEAD` for every repository (`mailmap.blob`), so a checked-out `.mailmap`
+  that is a symlink out of `REPOS_DIR` (git before 2.32 follows it) is never
+  opened.
 - `safe.directory` is set to the repository being read, for that call only.
   Repositories mounted into a container usually belong to a different user,
   and git would otherwise refuse to open them ("dubious ownership").
@@ -151,8 +155,15 @@ Output formats are chosen to be unambiguous rather than readable:
 
 Names in history, commits, blame, the latest commit per file and the
 contributors list all go through `.mailmap` (`%aN`/`%aE` in formats), so one
-person shows up under one name everywhere. Clones read `.mailmap` from their
-working tree, bare repositories from `HEAD`.
+person shows up under one name everywhere, and the `author` filter matches
+the mapped names (`--use-mailmap`, `log.mailmap=true`). `.mailmap` is read
+from `HEAD`.
+
+The activity chart reads one year back from the tip's commit date with
+`--max-age`, which stops the walk at the first commit older than that. When
+commit dates are out of order (a skewed clock, rebased history), commits
+behind such an older one are not counted, so the chart can undercount; the
+contributors list walks everything and is exact.
 
 Each parser lives next to the command that feeds it in `src/git/` and has unit
 tests with tricky input (quotes, tabs and newlines in names, no newline at end

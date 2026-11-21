@@ -27,7 +27,8 @@
 - Insights no longer fail (500) on repositories with very long histories,
   read only the last year for the activity chart and are cached per commit
 - History, commit pages and the file list apply `.mailmap`, like the
-  contributors list already did
+  contributors list already did, and the author filter matches mapped names.
+  `.mailmap` is read from `HEAD` for every repository, never from a checkout
 
 ### Security
 
