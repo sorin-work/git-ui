@@ -13,6 +13,9 @@ services:
       # Set both to require a login (HTTP basic auth) for everything.
       AUTH_USERNAME: ${AUTH_USERNAME:-}
       AUTH_PASSWORD: ${AUTH_PASSWORD:-}
+      # Requests come through the web container's nginx: believe one hop of
+      # X-Forwarded-For, so login throttling sees each client's address.
+      TRUST_PROXY: ${TRUST_PROXY:-1}
     volumes:
       # The folder with your repositories (REPOS_PATH=/home/me/code). git-ui
       # only reads from it, apart from creating the demo repositories when it
