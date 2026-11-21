@@ -27,7 +27,7 @@ export function parseShortlog(output: string): Contributor[] {
 }
 
 export async function contributors(repo: RepoLocation, commit: string): Promise<Contributor[]> {
-  return parseShortlog(await git(repo, ['shortlog', '-sne', commit, '--']));
+  return parseShortlog(await git(repo, ['shortlog', '-sne', '--end-of-options', commit, '--']));
 }
 
 function mondayOf(time: number): number {
@@ -63,7 +63,7 @@ export async function weeklyActivity(
   commit: string,
   weeks = 52,
 ): Promise<WeekActivity[]> {
-  const out = await git(repo, ['log', '--format=%ct', commit, '--']);
+  const out = await git(repo, ['log', '--format=%ct', '--end-of-options', commit, '--']);
   const times = out
     .split('\n')
     .filter(Boolean)

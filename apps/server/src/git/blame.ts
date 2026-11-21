@@ -1,5 +1,6 @@
 import type { RepoLocation } from './repos.js';
 import { git } from './run.js';
+import { assertFullSha } from './validate.js';
 
 export interface BlameLine {
   /** Line number in the file as it is at the requested commit. */
@@ -77,6 +78,6 @@ export function parseBlame(output: string): Blame {
 }
 
 export async function blame(repo: RepoLocation, commit: string, path: string): Promise<Blame> {
-  const out = await git(repo, ['blame', '--porcelain', commit, '--', path]);
+  const out = await git(repo, ['blame', '--porcelain', assertFullSha(commit), '--', path]);
   return parseBlame(out);
 }

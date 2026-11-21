@@ -17,12 +17,12 @@ export async function searchRoutes(app: FastifyInstance, { registry }: { registr
     const repo = await findRepo(registry, request.params);
     const query = searchQuery.parse(request.query);
     const path = repoPath(query.path);
-    const { ref, commit } = await resolveCommit(repo, query.ref);
+    const { ref, kind, commit } = await resolveCommit(repo, query.ref);
 
     const result = await searchCode(repo, commit, query.q, {
       path: path || undefined,
       caseSensitive: query.case === '1',
     });
-    return { ref, commit, query: query.q, ...result };
+    return { ref, kind, commit, query: query.q, ...result };
   });
 }

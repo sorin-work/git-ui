@@ -14,7 +14,7 @@ export async function blameRoutes(app: FastifyInstance, { registry }: { registry
     const query = refPathQuery.parse(request.query);
     const path = repoPath(query.path);
     if (path === '') throw badRequest('A file path is required');
-    const { ref, commit } = await resolveCommit(repo, query.ref);
+    const { ref, kind, commit } = await resolveCommit(repo, query.ref);
 
     const type = await objectType(repo, commit, path);
     if (type === null) throw notFound(`File "${path}"`);
@@ -26,6 +26,6 @@ export async function blameRoutes(app: FastifyInstance, { registry }: { registry
     const result = await cached(['blame', repo.path, commit, path], () =>
       blame(repo, commit, path),
     );
-    return { ref, commit, path, ...result };
+    return { ref, kind, commit, path, ...result };
   });
 }

@@ -18,7 +18,7 @@ export async function treeRoutes(app: FastifyInstance, { registry }: { registry:
     const repo = await findRepo(registry, request.params);
     const query = refPathQuery.parse(request.query);
     const path = repoPath(query.path);
-    const { ref, commit } = await resolveCommit(repo, query.ref);
+    const { ref, kind, commit } = await resolveCommit(repo, query.ref);
 
     const type = await objectType(repo, commit, path);
     if (type === null) throw notFound(`Path "${path}"`);
@@ -27,7 +27,7 @@ export async function treeRoutes(app: FastifyInstance, { registry }: { registry:
     const entries = await cached(['tree', repo.path, commit, path], () =>
       listTree(repo, commit, path),
     );
-    return { ref, commit, path, entries };
+    return { ref, kind, commit, path, entries };
   });
 
   /** Last commit for every entry of a folder; loaded separately because it is slower. */
@@ -53,8 +53,8 @@ export async function treeRoutes(app: FastifyInstance, { registry }: { registry:
   app.get('/repos/:repo/files', async (request) => {
     const repo = await findRepo(registry, request.params);
     const query = refPathQuery.parse(request.query);
-    const { ref, commit } = await resolveCommit(repo, query.ref);
+    const { ref, kind, commit } = await resolveCommit(repo, query.ref);
     const files = await cached(['files', repo.path, commit], () => listAllFiles(repo, commit));
-    return { ref, commit, ...files };
+    return { ref, kind, commit, ...files };
   });
 }

@@ -74,7 +74,7 @@ export async function listCommits(
   if (options.author) args.push(`--author=${options.author}`);
   if (options.query) args.push(`--grep=${options.query}`);
   if (options.follow && options.path) args.push('--follow');
-  args.push(commit, '--');
+  args.push('--end-of-options', commit, '--');
   if (options.path) args.push(options.path);
 
   return parseLog(await git(repo, args));

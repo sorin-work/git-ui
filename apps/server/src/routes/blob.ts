@@ -47,7 +47,7 @@ export async function blobRoutes(app: FastifyInstance, { registry }: { registry:
     const query = refPathQuery.parse(request.query);
     const path = repoPath(query.path);
     if (path === '') throw badRequest('A file path is required');
-    const { ref, commit } = await resolveCommit(repo, query.ref);
+    const { ref, kind, commit } = await resolveCommit(repo, query.ref);
 
     const type = await objectType(repo, commit, path);
     if (type === null) throw notFound(`File "${path}"`);
@@ -59,6 +59,7 @@ export async function blobRoutes(app: FastifyInstance, { registry }: { registry:
     );
     return {
       ref,
+      kind,
       commit,
       path,
       name,

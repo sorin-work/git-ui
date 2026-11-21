@@ -27,7 +27,14 @@ const DETAIL_FORMAT = ['%H', '%h', '%P', '%an', '%ae', '%aI', '%cn', '%ce', '%cI
 );
 
 export async function readCommit(repo: RepoLocation, sha: string): Promise<CommitDetail> {
-  const out = await git(repo, ['show', '--no-patch', `--format=${DETAIL_FORMAT}`, sha, '--']);
+  const out = await git(repo, [
+    'show',
+    '--no-patch',
+    `--format=${DETAIL_FORMAT}`,
+    '--end-of-options',
+    sha,
+    '--',
+  ]);
   const [hash, shortSha, parents, an, ae, ad, cn, ce, cd, subject, body] = out.split('\0');
   return {
     sha: hash ?? sha,
@@ -55,6 +62,7 @@ export async function commitDiff(repo: RepoLocation, sha: string): Promise<FileD
     '--format=',
     '--patch',
     '--find-renames',
+    '--end-of-options',
     sha,
     '--',
   ]);

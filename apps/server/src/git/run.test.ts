@@ -54,7 +54,7 @@ describe('git runner', () => {
     const repo = { name: 'x', path: dir, gitDir: path.join(dir, '.git'), bare: false };
 
     await commitDiff(repo, 'HEAD');
-    await blame(repo, 'HEAD', 'a.txt');
+    await blame(repo, (await git(dir, ['rev-parse', 'HEAD'])).trim(), 'a.txt');
     await git(dir, ['log', '-p', '-1']);
     await git(dir, ['diff', 'HEAD~1', 'HEAD']);
     expect(existsSync(marker)).toBe(false);

@@ -64,6 +64,9 @@ export function gitEnvironment(extra: Record<string, string> = {}): Record<strin
     GIT_ATTR_NOSYSTEM: '1',
     // refs/replace can make a sha show another commit's content.
     GIT_NO_REPLACE_OBJECTS: '1',
+    // A path is a path: no `:(exclude)` magic and no `*` patterns in what
+    // the API passes after `--`.
+    GIT_LITERAL_PATHSPECS: '1',
     // Never write to the repositories, not even the index of a clone.
     GIT_OPTIONAL_LOCKS: '0',
     GIT_TERMINAL_PROMPT: '0',

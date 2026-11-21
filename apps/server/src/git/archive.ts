@@ -213,8 +213,8 @@ export async function archiveStream(
   format: ArchiveFormat,
 ): Promise<Readable> {
   const [tree, time] = await Promise.all([
-    git(repo, ['ls-tree', '-r', '-t', '-z', '--long', commit]),
-    git(repo, ['show', '-s', '--format=%ct', commit, '--']),
+    git(repo, ['ls-tree', '-r', '-t', '-z', '--long', '--end-of-options', commit]),
+    git(repo, ['show', '-s', '--format=%ct', '--end-of-options', commit, '--']),
   ]);
   const entries = parseArchiveTree(tree);
   const mtime = Number(time.trim());

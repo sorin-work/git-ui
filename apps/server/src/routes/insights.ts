@@ -16,21 +16,21 @@ export async function insightsRoutes(
   app.get('/repos/:repo/insights', async (request) => {
     const repo = await findRepo(registry, request.params);
     const query = insightsQuery.parse(request.query);
-    const { ref, commit } = await resolveCommit(repo, query.ref);
+    const { ref, kind, commit } = await resolveCommit(repo, query.ref);
     const [people, weeks] = await Promise.all([
       contributors(repo, commit),
       weeklyActivity(repo, commit),
     ]);
-    return { ref, commit, contributors: people, activity: weeks };
+    return { ref, kind, commit, contributors: people, activity: weeks };
   });
 
   app.get('/repos/:repo/languages', async (request) => {
     const repo = await findRepo(registry, request.params);
     const query = insightsQuery.parse(request.query);
-    const { ref, commit } = await resolveCommit(repo, query.ref);
+    const { ref, kind, commit } = await resolveCommit(repo, query.ref);
     const languages = await cached(['languages', repo.path, commit], () =>
       repositoryLanguages(repo, commit),
     );
-    return { ref, commit, languages };
+    return { ref, kind, commit, languages };
   });
 }

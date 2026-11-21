@@ -39,6 +39,7 @@ async function aheadBehind(repo: RepoLocation, base: string, branch: string) {
     'rev-list',
     '--left-right',
     '--count',
+    '--end-of-options',
     `refs/heads/${base}...refs/heads/${branch}`,
     '--',
   ]);

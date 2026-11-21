@@ -22,6 +22,21 @@ export function isSafeRef(ref: string): boolean {
   );
 }
 
+/** A full sha1 or sha256 object name, as resolveCommit returns. */
+export function isFullSha(value: string): boolean {
+  return /^([0-9a-f]{40}|[0-9a-f]{64})$/.test(value);
+}
+
+/**
+ * For the commands that do not take `--end-of-options` (blame and grep, up
+ * to at least git 2.43): only a resolved commit sha may stand where git
+ * expects a revision, so nothing from a request can be read as an option.
+ */
+export function assertFullSha(value: string): string {
+  if (!isFullSha(value)) throw new Error(`Expected a full commit sha, got "${value}"`);
+  return value;
+}
+
 export function isSha(value: string): boolean {
   return /^[0-9a-f]{4,64}$/i.test(value);
 }

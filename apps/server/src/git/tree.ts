@@ -65,7 +65,7 @@ export async function listAllFiles(
   repo: RepoLocation,
   commit: string,
 ): Promise<{ files: string[]; truncated: boolean }> {
-  const out = await git(repo, ['ls-tree', '-r', '-z', '--name-only', commit]);
+  const out = await git(repo, ['ls-tree', '-r', '-z', '--name-only', '--end-of-options', commit]);
   const files = out.split('\0').filter(Boolean);
   return { files: files.slice(0, MAX_FILES), truncated: files.length > MAX_FILES };
 }
@@ -77,7 +77,7 @@ export async function listTree(
   path: string,
 ): Promise<TreeEntry[]> {
   const treeish = path === '' ? commit : `${commit}:${path}`;
-  const out = await git(repo, ['ls-tree', '--long', '-z', treeish]);
+  const out = await git(repo, ['ls-tree', '--long', '-z', '--end-of-options', treeish]);
   return sortEntries(
     parseLsTree(out).map((entry) => ({
       ...entry,

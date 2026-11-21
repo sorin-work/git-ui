@@ -65,6 +65,7 @@ export async function latestCommits(
     '--name-only',
     '--format=%x1e%H%x1f%s%x1f%an%x1f%aI',
     `--max-count=${MAX_WALK}`,
+    '--end-of-options',
     commit,
     '--',
     dir || '.',

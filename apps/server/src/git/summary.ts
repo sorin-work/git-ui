@@ -43,7 +43,14 @@ export async function defaultBranch(repo: RepoLocation): Promise<string | null> 
 /** The latest commit on HEAD, or null for a repository without commits. */
 export async function lastCommit(repo: RepoLocation): Promise<CommitBrief | null> {
   try {
-    const out = await git(repo, ['log', '-1', '--format=%H%x00%s%x00%an%x00%aI', 'HEAD', '--']);
+    const out = await git(repo, [
+      'log',
+      '-1',
+      '--format=%H%x00%s%x00%an%x00%aI',
+      '--end-of-options',
+      'HEAD',
+      '--',
+    ]);
     const [sha, subject, author, date] = out.trimEnd().split('\0');
     if (!sha || subject === undefined || author === undefined || !date) return null;
     return { sha, subject, author, date };

@@ -1,5 +1,6 @@
 import type { RepoLocation } from './repos.js';
 import { git, GitError } from './run.js';
+import { assertFullSha } from './validate.js';
 
 export const MAX_MATCHES = 300;
 const MAX_PER_FILE = 20;
@@ -49,7 +50,7 @@ export async function searchCode(
     `--max-count=${MAX_PER_FILE}`,
   ];
   if (!options.caseSensitive) args.push('--ignore-case');
-  args.push('-e', query, commit, '--');
+  args.push('-e', query, assertFullSha(commit), '--');
   if (options.path) args.push(options.path);
 
   let out: string;

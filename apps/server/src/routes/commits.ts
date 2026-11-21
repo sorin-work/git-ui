@@ -21,7 +21,7 @@ export async function commitRoutes(app: FastifyInstance, { registry }: { registr
     const repo = await findRepo(registry, request.params);
     const query = commitsQuery.parse(request.query);
     const path = repoPath(query.path);
-    const { ref, commit } = await resolveCommit(repo, query.ref);
+    const { ref, kind, commit } = await resolveCommit(repo, query.ref);
 
     // The history of a single file continues through renames; folders can't be followed.
     const follow = path !== '' && (await objectType(repo, commit, path)) === 'blob';
@@ -38,6 +38,7 @@ export async function commitRoutes(app: FastifyInstance, { registry }: { registr
 
     return {
       ref,
+      kind,
       commit,
       page: query.page,
       pageSize: query.pageSize,
