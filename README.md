@@ -89,6 +89,7 @@ The server reads these environment variables (or `apps/server/.env`):
 | `TRUST_PROXY`            |                | Believe `X-Forwarded-For` from a proxy: a hop count (`1`), addresses, or `true` |
 | `GIT_MAX_PROCESSES`      | twice the CPUs | git processes running at once; more wait in line                                |
 | `GIT_QUEUE_TIMEOUT_MS`   | `10000`        | How long a request waits for a git process before a 503                         |
+| `CACHE_MAX_MB`           | `256`          | Roughly how much memory cached git results may use                              |
 | `ARCHIVE_MAX_CONCURRENT` | `2`            | zip and tar.gz downloads running at once                                        |
 | `ARCHIVE_TIMEOUT_MS`     | `600000`       | A download still running after this is stopped                                  |
 

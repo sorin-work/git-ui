@@ -173,9 +173,14 @@ of file, merges, renames).
 
 Anything addressed by a full commit sha never changes, so the routes for
 trees, file contents, blame, commits and language stats cache their results in a
-process-wide LRU (`src/lib/cache.ts`, 500 entries). Branch names are resolved
-on every request and only then looked up in the cache, so new pushes are
-visible immediately. Failed lookups are never cached.
+process-wide LRU (`src/lib/cache.ts`), bounded both by count (500 entries)
+and by size (`CACHE_MAX_MB`, 256 MB). The size of each value is estimated
+once when it resolves (`roughSize` walks it: two bytes per string
+character, eight per number, a little per key and object), pending loads
+count as nothing until then, and a value bigger than the whole budget is
+not kept. Branch names are resolved on every request and only then looked
+up in the cache, so new pushes are visible immediately. Failed lookups are
+never cached.
 
 ### Routes and errors
 

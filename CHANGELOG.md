@@ -4,6 +4,9 @@
 
 ### Added
 
+- The cache of git results is limited by size as well (`CACHE_MAX_MB`,
+  256 MB by default), so a few large diffs can no longer use gigabytes
+
 - Limits on git work: at most `GIT_MAX_PROCESSES` git processes at once
   (requests that wait too long get 503 `busy`), at most
   `ARCHIVE_MAX_CONCURRENT` downloads, each stopped after

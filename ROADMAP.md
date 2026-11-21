@@ -55,7 +55,7 @@ still open), and the README, the docs and the CHANGELOG (under an
 | 4   | Bounded git work                            | Shipped | ops         | M    | -          |
 | 5   | Login throttling and security headers       | Shipped | security    | S    | -          |
 | 6   | Insights for long histories                 | Shipped | correctness | S    | -          |
-| 7   | A cache bounded by size                     | Later   | performance | S    | -          |
+| 7   | A cache bounded by size                     | Shipped | performance | S    | -          |
 | 8   | A faster repository list                    | Later   | performance | M    | -          |
 | 9   | Choosing which repositories are shown       | Later   | repos       | S    | -          |
 | 10  | Repositories in nested folders              | Later   | repos       | M    | 2, 8       |
@@ -93,27 +93,6 @@ Everything that was here has shipped (see the end of this file). The next
 picks come from Later.
 
 ## Later
-
-### 7. A cache bounded by size
-
-`gitCache` in `server/lib/cache.ts` keeps 500 entries, whatever their size. A
-file is up to 1 MB of text, a commit diff can be most of 32 MB of output once
-parsed into objects, and the file list for the finder holds up to 50,000
-paths. Five hundred large entries are several GB, and the server has no
-memory limit in docker.
-
-- `LruCache` counts an approximate size per entry and evicts by total size
-  (`CACHE_MAX_MB`, default 256) as well as by count.
-- The loader knows the size best: `cached(parts, load, sizeOf)`, where
-  `sizeOf` gets the result. For blobs it is the content length, for diffs the
-  output length from git (pass it out of `commitDiff`), for file lists the sum
-  of path lengths. A default of `JSON.stringify(value).length` is too slow for
-  big values; use it only in tests.
-- Tricky: the cache stores promises, so the size is known only once a promise
-  resolves. Count pending entries as zero and evict when they resolve.
-- Tricky: entries bigger than the whole budget should not be cached at all
-  rather than flushing everything else.
-- Tests: `server/lib/cache.test.ts`.
 
 ### 8. A faster repository list
 
@@ -744,3 +723,16 @@ not from the commit being shown, because that means a different
 (clock skew) still moves the year, but commits older than the tip's year
 that come later in the walk are no longer counted. The test with 150,000
 commits became a unit test of `newest` with 500,000 numbers.
+
+### 7. A cache bounded by size
+
+`LruCache` in `server/lib/cache.ts` counts an estimated size per entry and
+evicts the least recently used entries while the total is over
+`CACHE_MAX_MB` (256 MB by default) as well as over 500 entries. Pending
+loads count as zero until they resolve, and a value larger than the whole
+budget is dropped instead of flushing everything else. Differences: the
+size comes from `roughSize`, one walk over the resolved value, rather than
+a `sizeOf` passed by each loader; one walk is cheap next to the git call
+that produced the value, and no call site can forget it. The estimate is
+not exact and does not count V8's own overhead, so the real memory use
+can be somewhat higher than the budget.
