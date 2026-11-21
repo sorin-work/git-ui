@@ -47,45 +47,45 @@ still open), and the README, the docs and the CHANGELOG (under an
 
 ## Overview
 
-| #   | Item                                        | Group | Area        | Size | Depends on |
-| --- | ------------------------------------------- | ----- | ----------- | ---- | ---------- |
-| 1   | Repositories cannot make git run programs   | Next  | security    | M    | -          |
-| 2   | Repositories stay inside REPOS_DIR          | Next  | security    | M    | -          |
-| 3   | Paths and refs that mean one thing          | Next  | security    | S    | -          |
-| 4   | Bounded git work                            | Next  | ops         | M    | -          |
-| 5   | Login throttling and security headers       | Next  | security    | S    | -          |
-| 6   | Insights for long histories                 | Later | correctness | S    | -          |
-| 7   | A cache bounded by size                     | Later | performance | S    | -          |
-| 8   | A faster repository list                    | Later | performance | M    | -          |
-| 9   | Choosing which repositories are shown       | Later | repos       | S    | -          |
-| 10  | Repositories in nested folders              | Later | repos       | M    | 2, 8       |
-| 11  | Every legal branch and tag name             | Later | refs        | M    | 3          |
-| 12  | Large commits and comparisons               | Later | diffs       | M    | 3          |
-| 13  | Ignoring whitespace and expanding context   | Later | diffs       | M    | -          |
-| 14  | Word-level changes in diffs                 | Later | diffs       | S    | -          |
-| 15  | Patch and diff downloads                    | Later | diffs       | S    | -          |
-| 16  | Permanent links                             | Later | web         | S    | -          |
-| 17  | Regular expression search                   | Later | search      | S    | 3, 4       |
-| 18  | File history with diffs                     | Later | history     | M    | -          |
-| 19  | Blame: earlier versions and ignored commits | Later | history     | M    | -          |
-| 20  | Tag pages and releases                      | Later | refs        | S    | -          |
-| 21  | Git LFS pointer files                       | Later | files       | S    | -          |
-| 22  | Submodule links                             | Later | files       | S    | -          |
-| 23  | Markdown fixes                              | Later | web         | S    | -          |
-| 24  | Clone URLs                                  | Later | repos       | S    | -          |
-| 25  | Atom feeds                                  | Later | api         | S    | -          |
-| 26  | Serving under a sub-path                    | Later | ops         | M    | -          |
-| 27  | Accessibility pass                          | Later | ui          | M    | -          |
-| 28  | Metrics and slow git calls in the log       | Later | ops         | S    | -          |
-| 29  | Supported git versions and upgrades         | Later | ops         | S    | -          |
-| 30  | A tighter docker setup                      | Later | ops         | S    | -          |
-| 31  | Page tests for the web app                  | Later | tests       | M    | -          |
-| 32  | Commit graph                                | Maybe | history     | L    | -          |
-| 33  | Search across all repositories              | Maybe | search      | M    | 4          |
-| 34  | Verified signatures                         | Maybe | history     | L    | 1          |
-| 35  | Notebooks and CSV files                     | Maybe | files       | M    | -          |
-| 36  | Several users and per-repository access     | Maybe | auth        | L    | 9          |
-| 37  | Login through a reverse proxy               | Maybe | auth        | S    | 5          |
+| #   | Item                                        | Group   | Area        | Size | Depends on |
+| --- | ------------------------------------------- | ------- | ----------- | ---- | ---------- |
+| 1   | Repositories cannot make git run programs   | Shipped | security    | M    | -          |
+| 2   | Repositories stay inside REPOS_DIR          | Next    | security    | M    | -          |
+| 3   | Paths and refs that mean one thing          | Next    | security    | S    | -          |
+| 4   | Bounded git work                            | Next    | ops         | M    | -          |
+| 5   | Login throttling and security headers       | Next    | security    | S    | -          |
+| 6   | Insights for long histories                 | Later   | correctness | S    | -          |
+| 7   | A cache bounded by size                     | Later   | performance | S    | -          |
+| 8   | A faster repository list                    | Later   | performance | M    | -          |
+| 9   | Choosing which repositories are shown       | Later   | repos       | S    | -          |
+| 10  | Repositories in nested folders              | Later   | repos       | M    | 2, 8       |
+| 11  | Every legal branch and tag name             | Later   | refs        | M    | 3          |
+| 12  | Large commits and comparisons               | Later   | diffs       | M    | 3          |
+| 13  | Ignoring whitespace and expanding context   | Later   | diffs       | M    | -          |
+| 14  | Word-level changes in diffs                 | Later   | diffs       | S    | -          |
+| 15  | Patch and diff downloads                    | Later   | diffs       | S    | -          |
+| 16  | Permanent links                             | Later   | web         | S    | -          |
+| 17  | Regular expression search                   | Later   | search      | S    | 3, 4       |
+| 18  | File history with diffs                     | Later   | history     | M    | -          |
+| 19  | Blame: earlier versions and ignored commits | Later   | history     | M    | -          |
+| 20  | Tag pages and releases                      | Later   | refs        | S    | -          |
+| 21  | Git LFS pointer files                       | Later   | files       | S    | -          |
+| 22  | Submodule links                             | Later   | files       | S    | -          |
+| 23  | Markdown fixes                              | Later   | web         | S    | -          |
+| 24  | Clone URLs                                  | Later   | repos       | S    | -          |
+| 25  | Atom feeds                                  | Later   | api         | S    | -          |
+| 26  | Serving under a sub-path                    | Later   | ops         | M    | -          |
+| 27  | Accessibility pass                          | Later   | ui          | M    | -          |
+| 28  | Metrics and slow git calls in the log       | Later   | ops         | S    | -          |
+| 29  | Supported git versions and upgrades         | Later   | ops         | S    | -          |
+| 30  | A tighter docker setup                      | Later   | ops         | S    | -          |
+| 31  | Page tests for the web app                  | Later   | tests       | M    | -          |
+| 32  | Commit graph                                | Maybe   | history     | L    | -          |
+| 33  | Search across all repositories              | Maybe   | search      | M    | 4          |
+| 34  | Verified signatures                         | Maybe   | history     | L    | 1          |
+| 35  | Notebooks and CSV files                     | Maybe   | files       | M    | -          |
+| 36  | Several users and per-repository access     | Maybe   | auth        | L    | 9          |
+| 37  | Login through a reverse proxy               | Maybe   | auth        | S    | 5          |
 
 ## Next
 
