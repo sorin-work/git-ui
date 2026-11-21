@@ -26,12 +26,24 @@ symlinks are only followed when they resolve to a directory inside
 
 A repository's git data can live somewhere else than its folder: a `.git`
 file names its git directory, a linked worktree's `commondir` names the main
-repository, `objects/info/alternates` adds other object stores, and `objects`
-or `refs` can be symlinks. `escapeReason` resolves all of these (alternates
-recursively) and leaves the repository out unless every one is inside
-`REPOS_DIR`. Each repository left out is logged once with the reason.
+repository, `objects/info/alternates` adds other object stores, and any file or folder
+in the git directory can be a symlink. `escapeReason` resolves all of these
+and leaves the repository out unless every one is inside `REPOS_DIR`:
+alternates recursively (relative entries against the real path of the
+objects folder, as git does), every entry under `refs/`, `logs/` and
+`objects/` (including `pack/` and `info/`), and `HEAD`, `config`, `index`,
+`packed-refs`, `shallow` and `info/grafts`. A link that leads nowhere is
+refused too, since it could be pointed anywhere later. The walk stops after
+100,000 entries or 3 seconds and refuses the repository, which mostly means
+a repository with a huge number of loose objects (`git gc` packs them). Each repository left out is logged once with the reason.
 Worktrees and alternates between repositories that are both in `REPOS_DIR`
 keep working.
+
+This check is defence in depth, not a security boundary. It runs when a
+repository is looked up and git reads the files a moment later, so someone
+who can write to `REPOS_DIR` can swap a link in between. `REPOS_DIR` must
+only be writable by people who may read everything the server's user can
+read.
 
 Listing on every request keeps things simple: repositories added or removed
 on disk show up without a restart, and a directory listing is cheap next to

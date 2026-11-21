@@ -13,9 +13,11 @@
   of `git archive`, which runs filters and compressors from the repository's
   config. `export-ignore` and `export-subst` are no longer applied, and a
   download that fails halfway is cut off instead of ending as a valid but
-  incomplete archive
+  incomplete archive. Trees that would unpack outside their folder are
+  refused (422), and zip downloads are limited to files of 100 MB
 - A repository is left out when its git data is outside `REPOS_DIR` (a `.git`
-  file, `commondir`, alternates or linked `objects` and `refs`), and git runs
+  file, `commondir`, alternates, or a link anywhere under `refs`, `logs` or
+  `objects`), and git runs
   with an explicit git directory, so it never answers from a repository
   further up or from a `core.worktree` elsewhere
 

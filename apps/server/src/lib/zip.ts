@@ -36,9 +36,19 @@ export function fitsInZip(count: number, totalBytes: number): boolean {
   return count < MAX_ENTRIES && totalBytes + count * 1024 < MAX_32;
 }
 
-/** MS-DOS date and time, which zip stores in local time; we use UTC. */
-function dosDateTime(seconds: number): { time: number; date: number } {
-  const d = new Date(Math.max(seconds, 315532800) * 1000); // not before 1980
+/** 1980-01-01 and 2107-12-31 23:59:58, the range of MS-DOS dates. */
+const DOS_FIRST = 315532800;
+const DOS_LAST = 4354819198;
+
+/**
+ * MS-DOS date and time, which zip stores in local time; we use UTC. A commit
+ * date outside the range (they are whatever the committer wrote) is clamped.
+ */
+export function dosDateTime(seconds: number): { time: number; date: number } {
+  const clamped = Number.isFinite(seconds)
+    ? Math.min(Math.max(seconds, DOS_FIRST), DOS_LAST)
+    : DOS_FIRST;
+  const d = new Date(clamped * 1000);
   return {
     time: (d.getUTCHours() << 11) | (d.getUTCMinutes() << 5) | (d.getUTCSeconds() >> 1),
     date: ((d.getUTCFullYear() - 1980) << 9) | ((d.getUTCMonth() + 1) << 5) | d.getUTCDate(),
@@ -46,10 +56,22 @@ function dosDateTime(seconds: number): { time: number; date: number } {
 }
 
 const UTF8_NAMES = 0x0800;
+const utf8 = new TextDecoder('utf-8', { fatal: true });
+
+/** Whether `name` is valid UTF-8, so the zip may say so (flag bit 11). */
+export function isUtf8(name: Buffer): boolean {
+  try {
+    utf8.decode(name);
+    return true;
+  } catch {
+    return false;
+  }
+}
 const UNIX_TYPE = { file: 0o100000, dir: 0o040000, symlink: 0o120000 } as const;
 
 interface Written {
   name: Buffer;
+  flags: number;
   method: number;
   crc: number;
   compressed: number;
@@ -69,10 +91,11 @@ export class ZipWriter {
    * goes into the file, `raw` the original bytes (for the CRC and size).
    */
   add(entry: ArchiveEntry, raw: Buffer, data: Buffer, deflated: boolean): Buffer {
-    const name = Buffer.from(entry.type === 'dir' ? `${entry.path}/` : entry.path, 'utf8');
+    const name = entry.type === 'dir' ? Buffer.concat([entry.path, Buffer.from('/')]) : entry.path;
     const { time, date } = dosDateTime(entry.mtime);
     const record: Written = {
       name,
+      flags: isUtf8(name) ? UTF8_NAMES : 0,
       method: deflated ? 8 : 0,
       crc: crc32(raw),
       compressed: data.length,
@@ -90,7 +113,7 @@ export class ZipWriter {
     const header = Buffer.alloc(30);
     header.writeUInt32LE(0x04034b50, 0);
     header.writeUInt16LE(20, 4);
-    header.writeUInt16LE(UTF8_NAMES, 6);
+    header.writeUInt16LE(record.flags, 6);
     header.writeUInt16LE(record.method, 8);
     header.writeUInt16LE(time, 10);
     header.writeUInt16LE(date, 12);
@@ -113,7 +136,7 @@ export class ZipWriter {
       header.writeUInt32LE(0x02014b50, 0);
       header.writeUInt16LE((3 << 8) | 20, 4); // made by: Unix
       header.writeUInt16LE(20, 6);
-      header.writeUInt16LE(UTF8_NAMES, 8);
+      header.writeUInt16LE(r.flags, 8);
       header.writeUInt16LE(r.method, 10);
       header.writeUInt16LE(r.time, 12);
       header.writeUInt16LE(r.date, 14);

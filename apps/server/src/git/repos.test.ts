@@ -3,7 +3,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { TestRepo, tempDir } from '../../test/repo.js';
 import { contributors } from './insights.js';
-import { RepoRegistry, type SkippedRepo } from './repos.js';
+import { RepoRegistry, WALK_LIMITS, type SkippedRepo } from './repos.js';
 import { git } from './run.js';
 
 describe('RepoRegistry', () => {
@@ -215,5 +215,117 @@ describe('RepoRegistry and git data outside REPOS_DIR', () => {
     const bare = (await new RepoRegistry(root.dir).get('mapped'))!;
     expect(bare.bare).toBe(true);
     expect((await contributors(bare, 'HEAD'))[0]?.name).toBe('Mapped Name');
+  });
+});
+
+describe('RepoRegistry and links deep inside a git directory', () => {
+  let root: Awaited<ReturnType<typeof tempDir>>;
+  let base: string;
+  let secret: TestRepo;
+
+  /** A fresh repository inside REPOS_DIR, plus the reason it is refused (or null). */
+  async function refusedFor(name: string, tamper: (gitDir: string) => Promise<void>) {
+    const repo = await TestRepo.create(base, name);
+    await repo.commit('one', { 'a.txt': 'a\n' });
+    await tamper(path.join(repo.path, '.git'));
+    const skipped: SkippedRepo[] = [];
+    const registry = new RepoRegistry(base, (s) => skipped.push(s));
+    const found = await registry.get(name);
+    await rm(repo.path, { recursive: true, force: true });
+    return found ? null : (skipped.find((s) => path.basename(s.dir) === name)?.reason ?? 'missing');
+  }
+
+  beforeAll(async () => {
+    // REPOS_DIR is one level down, so the folder next to it is "outside".
+    root = await tempDir();
+    base = path.join(root.dir, 'repos');
+    await mkdir(base);
+    secret = await TestRepo.create(root.dir, 'secret');
+    await secret.commit('secret', { 'key.txt': 'do not publish\n' });
+    await secret.run(['branch', 'stolen']);
+  });
+
+  afterAll(() => root.cleanup());
+
+  it('refuses a linked ref file', async () => {
+    const reason = await refusedFor('ref-link', async (gitDir) => {
+      await symlink(
+        path.join(secret.path, '.git/refs/heads/stolen'),
+        path.join(gitDir, 'refs/heads/stolen'),
+      );
+    });
+    expect(reason).toBe('refs/heads/stolen is a link out of REPOS_DIR');
+  });
+
+  it('refuses linked refs in any namespace and linked reflogs', async () => {
+    const notes = await refusedFor('notes-link', async (gitDir) => {
+      await mkdir(path.join(gitDir, 'refs/notes'), { recursive: true });
+      await symlink(path.join(secret.path, '.git/refs/heads'), path.join(gitDir, 'refs/notes/x'));
+    });
+    expect(notes).toBe('refs/notes/x is a link out of REPOS_DIR');
+    const logs = await refusedFor('log-link', async (gitDir) => {
+      await symlink(path.join(secret.path, '.git/logs/HEAD'), path.join(gitDir, 'logs/stolen'));
+    });
+    expect(logs).toBe('logs/stolen is a link out of REPOS_DIR');
+  });
+
+  it('refuses a linked loose object and a linked pack', async () => {
+    const sha = (await secret.run(['rev-parse', 'HEAD:key.txt'])).trim();
+    const loose = await refusedFor('object-link', async (gitDir) => {
+      await mkdir(path.join(gitDir, 'objects', sha.slice(0, 2)), { recursive: true });
+      await symlink(
+        path.join(secret.path, '.git/objects', sha.slice(0, 2), sha.slice(2)),
+        path.join(gitDir, 'objects', sha.slice(0, 2), sha.slice(2)),
+      );
+    });
+    expect(loose).toBe(`objects/${sha.slice(0, 2)}/${sha.slice(2)} is a link out of REPOS_DIR`);
+    const pack = await refusedFor('pack-link', async (gitDir) => {
+      await symlink(path.join(secret.path, '.git/HEAD'), path.join(gitDir, 'objects/pack/x.pack'));
+    });
+    expect(pack).toBe('objects/pack/x.pack is a link out of REPOS_DIR');
+  });
+
+  it('refuses linked config, packed-refs and grafts', async () => {
+    for (const file of ['config', 'packed-refs', 'info/grafts']) {
+      const reason = await refusedFor(`file-${file.replace('/', '-')}`, async (gitDir) => {
+        await rm(path.join(gitDir, file), { force: true });
+        await mkdir(path.dirname(path.join(gitDir, file)), { recursive: true });
+        await symlink(path.join(secret.path, '.git/config'), path.join(gitDir, file));
+      });
+      expect(reason).toBe(`${file} is a link out of REPOS_DIR`);
+    }
+  });
+
+  it('refuses dangling links, which could be pointed anywhere later', async () => {
+    const reason = await refusedFor('dangling', async (gitDir) => {
+      await symlink(path.join(root.dir, 'not-yet'), path.join(gitDir, 'refs/heads/later'));
+    });
+    expect(reason).toBe('refs/heads/later is a link that leads nowhere');
+  });
+
+  it('resolves relative alternates against the real objects folder', async () => {
+    // objects is a link to REPOS_DIR/.store; seen from the link, the
+    // alternate stays inside, but git resolves it from .store, outside.
+    await mkdir(path.join(root.dir, 'target/objects'), { recursive: true });
+    const tricky = await refusedFor('tricky', async (gitDir) => {
+      const store = path.join(base, '.store');
+      await rm(store, { recursive: true, force: true });
+      await mkdir(path.join(store, 'info'), { recursive: true });
+      await writeFile(path.join(store, 'info/alternates'), '../../target/objects\n');
+      await rm(path.join(gitDir, 'objects'), { recursive: true });
+      await symlink(store, path.join(gitDir, 'objects'));
+    });
+    expect(tricky).toBe('objects/info/alternates points outside REPOS_DIR');
+  });
+
+  it('refuses a repository with more files than it can check', async () => {
+    const limit = WALK_LIMITS.entries;
+    WALK_LIMITS.entries = 3;
+    try {
+      const reason = await refusedFor('huge', async () => {});
+      expect(reason).toMatch(/too many files to check/);
+    } finally {
+      WALK_LIMITS.entries = limit;
+    }
   });
 });
