@@ -248,6 +248,11 @@ function run<T extends string | Buffer>(
             signal,
           },
           (error, stdout, stderr) => {
+            // Stopped through the request's signal: not git's failure.
+            if (error?.name === 'AbortError') {
+              reject(error);
+              return;
+            }
             if (error) {
               const code = typeof error.code === 'number' ? error.code : null;
               reject(
